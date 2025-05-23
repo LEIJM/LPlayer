@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- 更新的颜色方案 - 深色主题 -->
+    <color name="colorPrimary">#FF1E1E2E</color>
+    <color name="colorPrimaryDark">#FF181825</color>
+    <color name="colorAccent">#FF89DCEB</color>
+    <color name="colorAccentDark">#FF74C7EC</color>
+    <color name="colorTabSelected">#FF89DCEB</color>
+    <color name="colorTabUnselected">#FFBAC2DE</color>
+    <color name="colorBackground">#FF1E1E2E</color>
+    <color name="colorTextPrimary">#FFCDD6F4</color>
+    <color name="colorTextSecondary">#FFBAC2DE</color>
+    <color name="colorBottomNav">#FF181825</color>
+    
+    <!-- 新增的颜色 -->
+    <color name="colorOverlay">#80000000</color>
+    <color name="colorSurface">#FF313244</color>
+    <color name="colorControlHighlight">#FFCBA6F7</color>
+    <color name="colorControlNormal">#FF89DCEB</color>
+    <color name="colorError">#FFF38BA8</color>
+    <color name="colorSuccess">#FFA6E3A1</color>
+</resources>

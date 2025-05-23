@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">LPlayer</string>
+    <string name="enter_video_url">视频路径显示</string>
+    <string name="play">播放</string>
+    <string name="play_sample">选择视频</string>
+    <string name="please_enter_url">未选择视频</string>
+    <string name="select_video">选择视频</string>
+    <string name="permission_required">需要存储权限</string>
+    <string name="permission_denied">无法访问存储，请在设置中授予权限</string>
+    <string name="select_folder">选择文件夹</string>
+    <string name="no_videos_found">未找到视频文件</string>
+    <string name="video_name">正在播放: %1$s</string>
+    <string name="playlist">播放列表</string>
+    <string name="fullscreen">全屏</string>
+    <string name="exit_fullscreen">退出全屏</string>
+    <string name="settings">设置</string>
+    <string name="previous">上一个</string>
+    <string name="next">下一个</string>
+    <string name="auto_play_next">自动播放下一个</string>
+    <string name="tab_video">视频</string>
+    <string name="tab_music">音乐</string>
+    <string name="tab_playlist">播放列表</string>
+    
+    <!-- 音乐播放器相关 -->
+    <string name="play_pause">播放/暂停</string>
+    <string name="back">返回</string>
+    <string name="repeat">重复播放</string>
+    <string name="shuffle">随机播放</string>
+    <string name="album_cover">专辑封面</string>
+    <string name="no_music_found">未找到音乐文件</string>
+    <string name="select_music">选择音乐</string>
+    <string name="music_name">正在播放: %1$s</string>
+    <string name="unknown_artist">未知艺术家</string>
+</resources>
