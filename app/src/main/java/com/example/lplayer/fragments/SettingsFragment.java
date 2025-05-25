@@ -2,20 +2,25 @@ package com.example.lplayer.fragments;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.widget.Toolbar;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
+import com.example.lplayer.MainActivity;
 import com.example.lplayer.R;
 
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private ListPreference playbackSpeedPreference;
+    private Toolbar toolbar;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -42,23 +47,16 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         Preference aboutApp = findPreference("about_app");
         if (aboutApp != null) {
             aboutApp.setOnPreferenceClickListener(preference -> {
-                // TODO: 实现关于应用界面
-                Toast.makeText(getContext(), "关于应用功能开发中", Toast.LENGTH_SHORT).show();
+                showAboutFragment();
                 return true;
             });
         }
+    }
 
-        // 设置隐私政策点击事件
-        Preference privacyPolicy = findPreference("privacy_policy");
-        if (privacyPolicy != null) {
-            privacyPolicy.setOnPreferenceClickListener(preference -> {
-                // TODO: 替换为实际的隐私政策URL
-                String privacyPolicyUrl = "https://example.com/privacy-policy";
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(privacyPolicyUrl));
-                startActivity(intent);
-                return true;
-            });
-        }
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        setupToolbar();
     }
 
     @Override
@@ -71,6 +69,22 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         if (playbackSpeedPreference != null) {
             updatePlaybackSpeedSummary(playbackSpeedPreference.getValue());
         }
+        setupToolbar();
+    }
+
+    private void setupToolbar() {
+        if (toolbar == null) {
+            toolbar = requireActivity().findViewById(R.id.toolbar);
+        }
+        if (toolbar != null) {
+            toolbar.setTitle("设置");
+            toolbar.setNavigationIcon(R.drawable.ic_back);
+            toolbar.setNavigationOnClickListener(v -> {
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).closeSettings();
+                }
+            });
+        }
     }
 
     @Override
@@ -78,6 +92,17 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         super.onPause();
         PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .unregisterOnSharedPreferenceChangeListener(this);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (toolbar != null) {
+            toolbar.setTitle(R.string.app_name);
+            toolbar.setNavigationIcon(null);
+            toolbar.setNavigationOnClickListener(null);
+            toolbar = null;
+        }
     }
 
     @Override
@@ -120,5 +145,42 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             // 更新摘要显示
             playbackSpeedPreference.setSummary("当前速度: " + displayText);
         }
+    }
+
+    @Override
+    public boolean onPreferenceTreeClick(Preference preference) {
+        String key = preference.getKey();
+        if (key != null) {
+            switch (key) {
+                case "display_mode":
+                    // 处理显示模式设置
+                    String displayMode = preference.getSharedPreferences()
+                            .getString("display_mode", "grid");
+                    sendDisplayModeBroadcast(displayMode);
+                    break;
+            }
+        }
+        return super.onPreferenceTreeClick(preference);
+    }
+
+    private void showAboutFragment() {
+        AboutFragment fragment = new AboutFragment();
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.settings_container, fragment)
+                .addToBackStack(null)
+                .commit();
+    }
+
+    private void sendDisplayModeBroadcast(String displayMode) {
+        Intent intent = new Intent("com.example.lplayer.DISPLAY_MODE_CHANGED");
+        intent.putExtra("display_mode", displayMode);
+        requireContext().sendBroadcast(intent);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // ... existing code ...
     }
 } 

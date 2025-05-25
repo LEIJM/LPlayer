@@ -611,35 +611,9 @@ public class MainActivity extends AppCompatActivity
 
     private void toggleSettings() {
         if (!isSettingsVisible) {
-            // 显示设置界面
-            settingsContainer.setVisibility(View.VISIBLE);
-            viewPager.setVisibility(View.GONE);
-            bottomNavigationView.setVisibility(View.GONE);
-            
-            // 添加设置Fragment
-            if (settingsContainer.getChildCount() == 0) {
-                getSupportFragmentManager()
-                    .beginTransaction()
-                    .add(R.id.settings_container, new SettingsFragment())
-                    .commit();
-            }
-            
-            // 更新Toolbar
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("设置");
-            
-            isSettingsVisible = true;
+            showSettings();
         } else {
-            // 隐藏设置界面
-            settingsContainer.setVisibility(View.GONE);
-            viewPager.setVisibility(View.VISIBLE);
-            bottomNavigationView.setVisibility(View.VISIBLE);
-            
-            // 更新Toolbar
-            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
-            getSupportActionBar().setTitle(R.string.app_name);
-            
-            isSettingsVisible = false;
+            closeSettings();
         }
     }
 
@@ -650,5 +624,51 @@ public class MainActivity extends AppCompatActivity
             return true;
         }
         return super.onSupportNavigateUp();
+    }
+
+    public void showSettings() {
+        if (!isSettingsVisible) {
+            // 隐藏主内容
+            viewPager.setVisibility(View.GONE);
+            bottomNavigationView.setVisibility(View.GONE);
+            
+            // 显示设置容器
+            settingsContainer.setVisibility(View.VISIBLE);
+            
+            // 添加设置Fragment（如果还没有添加）
+            if (settingsContainer.getChildCount() == 0) {
+                getSupportFragmentManager()
+                    .beginTransaction()
+                    .add(R.id.settings_container, new SettingsFragment())
+                    .commit();
+            }
+            
+            // 更新Toolbar
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+                getSupportActionBar().setTitle("设置");
+            }
+            
+            isSettingsVisible = true;
+        }
+    }
+
+    public void closeSettings() {
+        if (isSettingsVisible) {
+            // 隐藏设置容器
+            settingsContainer.setVisibility(View.GONE);
+            
+            // 显示主内容
+            viewPager.setVisibility(View.VISIBLE);
+            bottomNavigationView.setVisibility(View.VISIBLE);
+            
+            // 更新Toolbar
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+                getSupportActionBar().setTitle(R.string.app_name);
+            }
+            
+            isSettingsVisible = false;
+        }
     }
 }

@@ -67,11 +67,6 @@
             android:key="about_app"
             android:title="关于应用"
             android:summary="查看应用信息和版本" />
-
-        <Preference
-            android:key="privacy_policy"
-            android:title="隐私政策"
-            android:summary="查看隐私政策" />
     </PreferenceCategory>
 
 </PreferenceScreen> 
