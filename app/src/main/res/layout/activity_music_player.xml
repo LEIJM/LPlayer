@@ -94,7 +94,7 @@
         android:layout_margin="32dp"
         app:cardCornerRadius="16dp"
         app:cardElevation="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_controls"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_controls_card"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
