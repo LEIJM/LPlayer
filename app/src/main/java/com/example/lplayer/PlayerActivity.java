@@ -35,6 +35,7 @@ import java.util.Locale;
 
 import android.database.Cursor;
 import android.provider.MediaStore;
+import androidx.preference.PreferenceManager;
 
 public class PlayerActivity extends AppCompatActivity {
 
@@ -99,6 +100,7 @@ public class PlayerActivity extends AppCompatActivity {
     private boolean isUserNext = false;
     private boolean isUserPrevious = false;
     private boolean isUserSelect = false;
+    private boolean autoPlayNext = true; // 添加自动播放设置变量
 
     private ImageButton unlockButton; // 动态解锁按钮
 
@@ -106,6 +108,10 @@ public class PlayerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
+        
+        // 读取自动播放设置
+        autoPlayNext = PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean("auto_play_next", true);
         
         // 全屏设置
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, 
@@ -363,8 +369,8 @@ public class PlayerActivity extends AppCompatActivity {
                         handler.post(updateProgressRunnable);
                         Log.d(TAG, "播放器准备就绪");
                     } else if (state == Player.STATE_ENDED) {
-                        // 只有自然播放结束才自动切歌
-                        if (!isUserNext && !isUserPrevious && !isUserSelect) {
+                        // 根据设置决定是否自动播放下一集
+                        if (autoPlayNext && !isUserNext && !isUserPrevious && !isUserSelect) {
                             playNextVideo();
                         }
                         isUserNext = false;

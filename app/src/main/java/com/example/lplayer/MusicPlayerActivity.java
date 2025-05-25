@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import android.database.Cursor;
 import android.provider.MediaStore;
+import androidx.preference.PreferenceManager;
 
 public class MusicPlayerActivity extends AppCompatActivity {
 
@@ -83,11 +84,16 @@ public class MusicPlayerActivity extends AppCompatActivity {
     private boolean isUserNext = false;
     private boolean isUserPrevious = false;
     private boolean isUserSelect = false;
+    private boolean autoPlayNext = true; // 添加自动播放设置变量
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_music_player);
+        
+        // 读取自动播放设置
+        autoPlayNext = PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean("auto_play_next", true);
         
         formatBuilder = new StringBuilder();
         formatter = new Formatter(formatBuilder, Locale.getDefault());
@@ -252,8 +258,8 @@ public class MusicPlayerActivity extends AppCompatActivity {
                         handler.post(updateProgressRunnable);
                         Log.d(TAG, "播放器准备就绪");
                     } else if (state == Player.STATE_ENDED) {
-                        // 只有自然播放结束才自动切歌
-                        if (!isUserNext && !isUserPrevious && !isUserSelect) {
+                        // 根据设置决定是否自动播放下一首
+                        if (autoPlayNext && !isUserNext && !isUserPrevious && !isUserSelect) {
                             playNextMusic();
                         }
                         isUserNext = false;
