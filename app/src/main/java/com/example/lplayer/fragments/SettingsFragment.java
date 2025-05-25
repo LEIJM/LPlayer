@@ -2,10 +2,13 @@ package com.example.lplayer.fragments;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
@@ -21,6 +24,54 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
 
     private ListPreference playbackSpeedPreference;
     private Toolbar toolbar;
+    private ActivityResultLauncher<Intent> videoFolderPickerLauncher;
+    private ActivityResultLauncher<Intent> musicFolderPickerLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        // 初始化文件夹选择器
+        videoFolderPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == MainActivity.RESULT_OK && result.getData() != null) {
+                    Uri folderUri = result.getData().getData();
+                    if (folderUri != null) {
+                        // 保存视频文件夹URI
+                        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(requireContext()).edit();
+                        editor.putString("default_video_folder_uri", folderUri.toString());
+                        editor.apply();
+                        
+                        // 更新设置项摘要
+                        Preference videoFolderPref = findPreference("default_video_folder");
+                        if (videoFolderPref != null) {
+                            videoFolderPref.setSummary("已选择: " + getFolderNameFromUri(folderUri));
+                        }
+                    }
+                }
+            });
+
+        musicFolderPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == MainActivity.RESULT_OK && result.getData() != null) {
+                    Uri folderUri = result.getData().getData();
+                    if (folderUri != null) {
+                        // 保存音乐文件夹URI
+                        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(requireContext()).edit();
+                        editor.putString("default_music_folder_uri", folderUri.toString());
+                        editor.apply();
+                        
+                        // 更新设置项摘要
+                        Preference musicFolderPref = findPreference("default_music_folder");
+                        if (musicFolderPref != null) {
+                            musicFolderPref.setSummary("已选择: " + getFolderNameFromUri(folderUri));
+                        }
+                    }
+                }
+            });
+    }
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -32,13 +83,37 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             // 初始化显示当前值
             updatePlaybackSpeedSummary(playbackSpeedPreference.getValue());
         }
-        
-        // 设置缓存位置点击事件
-        Preference cacheLocation = findPreference("cache_location");
-        if (cacheLocation != null) {
-            cacheLocation.setOnPreferenceClickListener(preference -> {
-                // TODO: 实现缓存位置选择逻辑
-                Toast.makeText(getContext(), "缓存位置选择功能开发中", Toast.LENGTH_SHORT).show();
+
+        // 设置默认视频文件夹点击事件
+        Preference videoFolderPref = findPreference("default_video_folder");
+        if (videoFolderPref != null) {
+            // 显示当前选择的文件夹
+            String videoFolderUri = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    .getString("default_video_folder_uri", null);
+            if (videoFolderUri != null) {
+                videoFolderPref.setSummary("已选择: " + getFolderNameFromUri(Uri.parse(videoFolderUri)));
+            }
+            
+            videoFolderPref.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                videoFolderPickerLauncher.launch(intent);
+                return true;
+            });
+        }
+
+        // 设置默认音乐文件夹点击事件
+        Preference musicFolderPref = findPreference("default_music_folder");
+        if (musicFolderPref != null) {
+            // 显示当前选择的文件夹
+            String musicFolderUri = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    .getString("default_music_folder_uri", null);
+            if (musicFolderUri != null) {
+                musicFolderPref.setSummary("已选择: " + getFolderNameFromUri(Uri.parse(musicFolderUri)));
+            }
+            
+            musicFolderPref.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                musicFolderPickerLauncher.launch(intent);
                 return true;
             });
         }
@@ -112,10 +187,6 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 String speed = sharedPreferences.getString(key, "1.0");
                 updatePlaybackSpeedSummary(speed);
                 break;
-            case "cache_size":
-                int cacheSize = sharedPreferences.getInt(key, 2);
-                // TODO: 实现缓存大小更新逻辑
-                break;
             case "list_display_mode":
                 String displayMode = sharedPreferences.getString(key, "grid");
                 // TODO: 实现列表显示模式更新逻辑
@@ -182,5 +253,17 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     public void onDestroy() {
         super.onDestroy();
         // ... existing code ...
+    }
+
+    private String getFolderNameFromUri(Uri uri) {
+        try {
+            String lastPath = uri.getLastPathSegment();
+            if (lastPath != null) {
+                return lastPath;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "未知文件夹";
     }
 } 

@@ -36,6 +36,13 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.preference.PreferenceManager;
+
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
 public class MainActivity extends AppCompatActivity 
         implements VideoFragment.VideoFragmentListener, 
                    PlaylistFragment.PlaylistFragmentListener,
@@ -58,6 +65,9 @@ public class MainActivity extends AppCompatActivity
     
     private List<VideoAdapter.VideoItem> videoList = new ArrayList<>();
     private int currentPlayingPosition = -1;
+    
+    private SwipeRefreshLayout swipeRefreshLayout;
+    private boolean isRefreshing = false;
     
     // 视频选择器
     private final ActivityResultLauncher<Intent> videoPickerLauncher = registerForActivityResult(
@@ -145,6 +155,7 @@ public class MainActivity extends AppCompatActivity
             bottomNavigationView = findViewById(R.id.bottom_navigation);
             toolbar = findViewById(R.id.toolbar);
             settingsContainer = findViewById(R.id.settings_container);
+            swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
             
             // 设置Toolbar为ActionBar
             setSupportActionBar(toolbar);
@@ -154,6 +165,14 @@ public class MainActivity extends AppCompatActivity
             
             // 设置底部导航
             setupBottomNavigation();
+
+            // 设置下拉刷新
+            setupSwipeRefresh();
+
+            // 首次启动时加载默认文件夹内容
+            if (savedInstanceState == null) {
+                loadDefaultFolders();
+            }
         } catch (Exception e) {
             Log.e(TAG, "初始化界面失败", e);
             Toast.makeText(this, "应用初始化失败", Toast.LENGTH_SHORT).show();
@@ -351,8 +370,19 @@ public class MainActivity extends AppCompatActivity
     
     private void openVideoPicker() {
         try {
-            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
-            videoPickerLauncher.launch(intent);
+            // 检查是否有默认视频文件夹
+            String defaultFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
+                    .getString("default_video_folder_uri", null);
+            
+            if (defaultFolderUri != null) {
+                // 如果有默认文件夹，直接打开该文件夹
+                Uri folderUri = Uri.parse(defaultFolderUri);
+                loadVideosFromFolder(folderUri);
+            } else {
+                // 否则打开系统文件选择器
+                Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+                videoPickerLauncher.launch(intent);
+            }
         } catch (Exception e) {
             Log.e(TAG, "打开视频选择器失败", e);
             Toast.makeText(this, "无法打开视频选择器", Toast.LENGTH_SHORT).show();
@@ -366,6 +396,77 @@ public class MainActivity extends AppCompatActivity
         } catch (Exception e) {
             Log.e(TAG, "打开文件夹选择器失败", e);
             Toast.makeText(this, "无法打开文件夹选择器", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void setupSwipeRefresh() {
+        swipeRefreshLayout.setColorSchemeResources(
+            android.R.color.holo_blue_bright,
+            android.R.color.holo_green_light,
+            android.R.color.holo_orange_light,
+            android.R.color.holo_red_light
+        );
+
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            if (!isRefreshing) {
+                isRefreshing = true;
+                refreshContent();
+            }
+        });
+    }
+
+    private void refreshContent() {
+        try {
+            // 根据当前页面刷新内容
+            int currentPosition = viewPager.getCurrentItem();
+            switch (currentPosition) {
+                case ViewPagerAdapter.TAB_VIDEO:
+                    // 刷新视频列表
+                    String defaultVideoFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
+                            .getString("default_video_folder_uri", null);
+                    if (defaultVideoFolderUri != null) {
+                        Uri videoFolderUri = Uri.parse(defaultVideoFolderUri);
+                        loadVideosFromFolder(videoFolderUri);
+                    } else {
+                        // 如果没有默认文件夹，清空列表
+                        videoList.clear();
+                        updateVideoLists();
+                        Toast.makeText(this, "请先设置默认视频文件夹", Toast.LENGTH_SHORT).show();
+                    }
+                    break;
+
+                case ViewPagerAdapter.TAB_MUSIC:
+                    // 刷新音乐列表
+                    String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
+                            .getString("default_music_folder_uri", null);
+                    if (defaultMusicFolderUri != null) {
+                        Uri musicFolderUri = Uri.parse(defaultMusicFolderUri);
+                        loadMusicFromFolder(musicFolderUri);
+                    } else {
+                        // 如果没有默认文件夹，清空列表
+                        Fragment musicFragment = getSupportFragmentManager()
+                                .findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+                        if (musicFragment instanceof MusicFragment) {
+                            ((MusicFragment) musicFragment).updateMusicList(new ArrayList<>());
+                            Toast.makeText(this, "请先设置默认音乐文件夹", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    break;
+
+                case ViewPagerAdapter.TAB_PLAYLIST:
+                    // 播放列表会自动更新，因为它使用的是视频列表的数据
+                    updateVideoLists();
+                    break;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "刷新内容失败", e);
+            Toast.makeText(this, "刷新失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        } finally {
+            // 延迟关闭刷新动画，给用户更好的视觉反馈
+            swipeRefreshLayout.postDelayed(() -> {
+                swipeRefreshLayout.setRefreshing(false);
+                isRefreshing = false;
+            }, 500);
         }
     }
     
@@ -441,6 +542,12 @@ public class MainActivity extends AppCompatActivity
                     } catch (Exception e) {
                         Log.e(TAG, "更新UI失败", e);
                         Toast.makeText(MainActivity.this, "加载视频列表失败", Toast.LENGTH_SHORT).show();
+                    } finally {
+                        // 确保刷新动画被关闭
+                        if (swipeRefreshLayout.isRefreshing()) {
+                            swipeRefreshLayout.setRefreshing(false);
+                            isRefreshing = false;
+                        }
                     }
                 });
             }).start();
@@ -448,6 +555,11 @@ public class MainActivity extends AppCompatActivity
         } catch (Exception e) {
             Log.e(TAG, "加载文件夹中的视频失败", e);
             Toast.makeText(this, "无法加载文件夹中的视频", Toast.LENGTH_SHORT).show();
+            // 确保刷新动画被关闭
+            if (swipeRefreshLayout.isRefreshing()) {
+                swipeRefreshLayout.setRefreshing(false);
+                isRefreshing = false;
+            }
         }
     }
     
@@ -606,6 +718,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
+        // 只更新视频列表，不重新加载文件夹
         updateVideoLists();
     }
 
@@ -631,6 +744,7 @@ public class MainActivity extends AppCompatActivity
             // 隐藏主内容
             viewPager.setVisibility(View.GONE);
             bottomNavigationView.setVisibility(View.GONE);
+            swipeRefreshLayout.setEnabled(false); // 禁用下拉刷新
             
             // 显示设置容器
             settingsContainer.setVisibility(View.VISIBLE);
@@ -661,6 +775,7 @@ public class MainActivity extends AppCompatActivity
             // 显示主内容
             viewPager.setVisibility(View.VISIBLE);
             bottomNavigationView.setVisibility(View.VISIBLE);
+            swipeRefreshLayout.setEnabled(true); // 启用下拉刷新
             
             // 更新Toolbar
             if (getSupportActionBar() != null) {
@@ -669,6 +784,215 @@ public class MainActivity extends AppCompatActivity
             }
             
             isSettingsVisible = false;
+        }
+    }
+
+    private void loadDefaultFolders() {
+        try {
+            // 加载默认视频文件夹
+            String defaultVideoFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
+                    .getString("default_video_folder_uri", null);
+            if (defaultVideoFolderUri != null) {
+                Uri videoFolderUri = Uri.parse(defaultVideoFolderUri);
+                // 确保有权限访问该文件夹
+                int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                try {
+                    getContentResolver().takePersistableUriPermission(videoFolderUri, takeFlags);
+                    loadVideosFromFolder(videoFolderUri);
+                } catch (SecurityException e) {
+                    Log.e(TAG, "无法获取视频文件夹权限", e);
+                    // 清除无效的文件夹设置
+                    PreferenceManager.getDefaultSharedPreferences(this)
+                            .edit()
+                            .remove("default_video_folder_uri")
+                            .apply();
+                }
+            }
+
+            // 加载默认音乐文件夹
+            String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
+                    .getString("default_music_folder_uri", null);
+            if (defaultMusicFolderUri != null) {
+                Uri musicFolderUri = Uri.parse(defaultMusicFolderUri);
+                // 确保有权限访问该文件夹
+                int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                try {
+                    getContentResolver().takePersistableUriPermission(musicFolderUri, takeFlags);
+                    loadMusicFromFolder(musicFolderUri);
+                } catch (SecurityException e) {
+                    Log.e(TAG, "无法获取音乐文件夹权限", e);
+                    // 清除无效的文件夹设置
+                    PreferenceManager.getDefaultSharedPreferences(this)
+                            .edit()
+                            .remove("default_music_folder_uri")
+                            .apply();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "加载默认文件夹失败", e);
+        }
+    }
+
+    private void loadMusicFromFolder(Uri folderUri) {
+        try {
+            Log.d(TAG, "开始扫描音乐文件夹: " + folderUri);
+            
+            // 创建独立线程处理文件扫描，避免阻塞UI线程
+            new Thread(() -> {
+                List<MusicAdapter.MusicItem> newMusic = new ArrayList<>();
+                
+                try {
+                    DocumentFile folder = DocumentFile.fromTreeUri(this, folderUri);
+                    
+                    if (folder != null && folder.exists()) {
+                        Log.d(TAG, "文件夹存在: " + folder.getName());
+                        DocumentFile[] files = folder.listFiles();
+                        Log.d(TAG, "找到文件数量: " + files.length);
+                        
+                        // 遍历查找音乐文件
+                        for (DocumentFile file : files) {
+                            try {
+                                if (file != null && file.isFile() && file.getType() != null && file.getType().startsWith("audio/")) {
+                                    String name = file.getName();
+                                    Uri uri = file.getUri();
+                                    if (name != null && uri != null) {
+                                        Log.d(TAG, "找到音乐: " + name + ", URI: " + uri);
+                                        // 获取音乐文件的元数据
+                                        MusicMetadata metadata = getMusicMetadata(uri);
+                                        newMusic.add(new MusicAdapter.MusicItem(
+                                            uri,
+                                            metadata.displayName,
+                                            metadata.artist,
+                                            metadata.album,
+                                            metadata.duration
+                                        ));
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "处理单个文件时出错", e);
+                            }
+                        }
+                    } else {
+                        Log.e(TAG, "文件夹不存在或无法访问");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "扫描文件夹失败", e);
+                }
+                
+                // 对音乐列表进行排序（按名称字母顺序）
+                sortMusicList(newMusic);
+                
+                Log.d(TAG, "找到音乐文件数量: " + newMusic.size());
+                
+                // 在UI线程更新界面
+                runOnUiThread(() -> {
+                    try {
+                        if (newMusic.isEmpty()) {
+                            Toast.makeText(MainActivity.this, R.string.no_music_found, Toast.LENGTH_SHORT).show();
+                        } else {
+                            // 获取当前的MusicFragment
+                            Fragment musicFragment = getSupportFragmentManager().findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+                            if (musicFragment instanceof MusicFragment) {
+                                ((MusicFragment) musicFragment).updateMusicList(newMusic);
+                                bottomNavigationView.setSelectedItemId(R.id.nav_music);
+                                Toast.makeText(MainActivity.this, 
+                                        String.format("已加载 %d 个音乐文件", newMusic.size()), 
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "更新UI失败", e);
+                        Toast.makeText(MainActivity.this, "加载音乐列表失败", Toast.LENGTH_SHORT).show();
+                    } finally {
+                        // 确保刷新动画被关闭
+                        if (swipeRefreshLayout.isRefreshing()) {
+                            swipeRefreshLayout.setRefreshing(false);
+                            isRefreshing = false;
+                        }
+                    }
+                });
+            }).start();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "加载文件夹中的音乐失败", e);
+            Toast.makeText(this, "无法加载文件夹中的音乐", Toast.LENGTH_SHORT).show();
+            // 确保刷新动画被关闭
+            if (swipeRefreshLayout.isRefreshing()) {
+                swipeRefreshLayout.setRefreshing(false);
+                isRefreshing = false;
+            }
+        }
+    }
+
+    private static class MusicMetadata {
+        String displayName;
+        String artist;
+        String album;
+        String duration;
+
+        MusicMetadata(String displayName, String artist, String album, String duration) {
+            this.displayName = displayName;
+            this.artist = artist;
+            this.album = album;
+            this.duration = duration;
+        }
+    }
+
+    private MusicMetadata getMusicMetadata(Uri uri) {
+        String displayName = "未知音乐";
+        String artist = "未知艺术家";
+        String album = "未知专辑";
+        String duration = "00:00";
+
+        try {
+            // 使用MediaStore查询音乐文件的元数据
+            String[] projection = {
+                MediaStore.Audio.Media.DISPLAY_NAME,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.DURATION
+            };
+
+            try (Cursor cursor = getContentResolver().query(
+                    uri,
+                    projection,
+                    null,
+                    null,
+                    null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME);
+                    int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
+                    int albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM);
+                    int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
+
+                    displayName = cursor.getString(nameColumn);
+                    artist = cursor.getString(artistColumn);
+                    album = cursor.getString(albumColumn);
+                    long durationMs = cursor.getLong(durationColumn);
+                    duration = formatDuration(durationMs);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "获取音乐元数据失败", e);
+        }
+
+        return new MusicMetadata(displayName, artist, album, duration);
+    }
+
+    private String formatDuration(long durationMs) {
+        return String.format(Locale.getDefault(), "%02d:%02d",
+                TimeUnit.MILLISECONDS.toMinutes(durationMs),
+                TimeUnit.MILLISECONDS.toSeconds(durationMs) -
+                        TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(durationMs)));
+    }
+
+    private void sortMusicList(List<MusicAdapter.MusicItem> music) {
+        if (music != null && !music.isEmpty()) {
+            music.sort((m1, m2) -> {
+                if (m1 == null || m1.getDisplayName() == null) return 1;
+                if (m2 == null || m2.getDisplayName() == null) return -1;
+                return m1.getDisplayName().toLowerCase().compareTo(m2.getDisplayName().toLowerCase());
+            });
         }
     }
 }

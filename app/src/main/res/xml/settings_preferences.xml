@@ -26,16 +26,14 @@
         app:iconSpaceReserved="false">
 
         <Preference
-            android:key="cache_location"
-            android:title="缓存位置"
-            android:summary="选择视频缓存存储位置" />
+            android:key="default_video_folder"
+            android:title="默认视频文件夹"
+            android:summary="选择视频文件的默认打开文件夹" />
 
-        <SeekBarPreference
-            android:key="cache_size"
-            android:title="缓存大小限制"
-            android:summary="设置最大缓存大小（GB）"
-            android:max="10"
-            android:defaultValue="2" />
+        <Preference
+            android:key="default_music_folder"
+            android:title="默认音乐文件夹"
+            android:summary="选择音乐文件的默认打开文件夹" />
     </PreferenceCategory>
 
     <PreferenceCategory

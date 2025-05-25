@@ -276,4 +276,12 @@ public class MusicFragment extends Fragment {
             loadMusicFromStorage();
         }
     }
+
+    public void updateMusicList(List<MusicAdapter.MusicItem> newMusicList) {
+        if (newMusicList != null) {
+            musicList.clear();
+            musicList.addAll(newMusicList);
+            updateUI();
+        }
+    }
 }
