@@ -2,6 +2,7 @@ package com.example.lplayer;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -69,6 +70,9 @@ public class MainActivity extends AppCompatActivity
     private SwipeRefreshLayout swipeRefreshLayout;
     private boolean isRefreshing = false;
     
+    // 保存最后选择的文件夹URI
+    private Uri lastSelectedFolderUri = null;
+
     // 视频选择器
     private final ActivityResultLauncher<Intent> videoPickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -77,12 +81,13 @@ public class MainActivity extends AppCompatActivity
                     Uri selectedVideoUri = result.getData().getData();
                     if (selectedVideoUri != null) {
                         try {
+                            // 清空当前视频列表
+                            videoList.clear();
+                            // 只添加当前选择的视频
                             String name = getFileNameFromUri(selectedVideoUri);
                             VideoAdapter.VideoItem videoItem = new VideoAdapter.VideoItem(selectedVideoUri, name);
-                            if (!videoList.contains(videoItem)) {
-                                videoList.add(videoItem);
-                                updateVideoLists();
-                            }
+                            videoList.add(videoItem);
+                            updateVideoLists();
                             playVideo(videoItem);
                         } catch (Exception e) {
                             Log.e(TAG, "播放视频失败", e);
@@ -102,6 +107,8 @@ public class MainActivity extends AppCompatActivity
                         try {
                             int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
                             getContentResolver().takePersistableUriPermission(folderUri, takeFlags);
+                            // 保存最后选择的文件夹
+                            lastSelectedFolderUri = folderUri;
                             loadVideosFromFolder(folderUri);
                         } catch (Exception e) {
                             Log.e(TAG, "获取文件夹权限失败", e);
@@ -173,6 +180,9 @@ public class MainActivity extends AppCompatActivity
             if (savedInstanceState == null) {
                 loadDefaultFolders();
             }
+
+            // 根据设置更新底部导航栏
+            updateBottomNavigation();
         } catch (Exception e) {
             Log.e(TAG, "初始化界面失败", e);
             Toast.makeText(this, "应用初始化失败", Toast.LENGTH_SHORT).show();
@@ -242,16 +252,19 @@ public class MainActivity extends AppCompatActivity
     }
     
     private int getMenuItemIdForPosition(int position) {
-        switch (position) {
-            case ViewPagerAdapter.TAB_VIDEO:
-                return R.id.nav_video;
-            case ViewPagerAdapter.TAB_MUSIC:
-                return R.id.nav_music;
-            case ViewPagerAdapter.TAB_PLAYLIST:
-                return R.id.nav_playlist;
-            default:
-                return R.id.nav_video;
+        // 根据实际启用的标签页返回对应的菜单项ID
+        int[] enabledTabs = viewPagerAdapter.getEnabledTabs();
+        if (position >= 0 && position < enabledTabs.length) {
+            switch (enabledTabs[position]) {
+                case ViewPagerAdapter.TAB_VIDEO:
+                    return R.id.nav_video;
+                case ViewPagerAdapter.TAB_MUSIC:
+                    return R.id.nav_music;
+                case ViewPagerAdapter.TAB_PLAYLIST:
+                    return R.id.nav_playlist;
+            }
         }
+        return R.id.nav_video; // 默认返回视频标签页
     }
     
     // VideoFragmentListener 方法实现
@@ -377,6 +390,12 @@ public class MainActivity extends AppCompatActivity
             if (defaultFolderUri != null) {
                 // 如果有默认文件夹，直接打开该文件夹
                 Uri folderUri = Uri.parse(defaultFolderUri);
+                // 保存最后选择的文件夹
+                lastSelectedFolderUri = folderUri;
+                // 清空当前视频列表
+                videoList.clear();
+                updateVideoLists();
+                // 加载新文件夹内容
                 loadVideosFromFolder(folderUri);
             } else {
                 // 否则打开系统文件选择器
@@ -421,17 +440,23 @@ public class MainActivity extends AppCompatActivity
             int currentPosition = viewPager.getCurrentItem();
             switch (currentPosition) {
                 case ViewPagerAdapter.TAB_VIDEO:
-                    // 刷新视频列表
-                    String defaultVideoFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
-                            .getString("default_video_folder_uri", null);
-                    if (defaultVideoFolderUri != null) {
-                        Uri videoFolderUri = Uri.parse(defaultVideoFolderUri);
-                        loadVideosFromFolder(videoFolderUri);
+                    // 优先使用最后选择的文件夹
+                    if (lastSelectedFolderUri != null) {
+                        loadVideosFromFolder(lastSelectedFolderUri);
                     } else {
-                        // 如果没有默认文件夹，清空列表
-                        videoList.clear();
-                        updateVideoLists();
-                        Toast.makeText(this, "请先设置默认视频文件夹", Toast.LENGTH_SHORT).show();
+                        // 如果没有最后选择的文件夹，则使用默认文件夹
+                        String defaultVideoFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
+                                .getString("default_video_folder_uri", null);
+                        if (defaultVideoFolderUri != null) {
+                            Uri videoFolderUri = Uri.parse(defaultVideoFolderUri);
+                            lastSelectedFolderUri = videoFolderUri; // 更新最后选择的文件夹
+                            loadVideosFromFolder(videoFolderUri);
+                        } else {
+                            // 如果没有默认文件夹，清空列表
+                            videoList.clear();
+                            updateVideoLists();
+                            Toast.makeText(this, "请先选择视频文件夹", Toast.LENGTH_SHORT).show();
+                        }
                     }
                     break;
 
@@ -516,29 +541,22 @@ public class MainActivity extends AppCompatActivity
                 // 在UI线程更新界面
                 runOnUiThread(() -> {
                     try {
+                        // 清空当前视频列表
+                        videoList.clear();
+                        
                         if (newVideos.isEmpty()) {
                             Toast.makeText(MainActivity.this, R.string.no_videos_found, Toast.LENGTH_SHORT).show();
                         } else {
-                            int addedCount = 0;
-                            for (VideoAdapter.VideoItem newVideo : newVideos) {
-                                if (!videoList.contains(newVideo)) {
-                                    videoList.add(newVideo);
-                                    addedCount++;
-                                }
-                            }
-                            sortVideoList(videoList);
-                            updateVideoLists();
-                            bottomNavigationView.setSelectedItemId(R.id.nav_video);
-                            if (addedCount > 0) {
-                                Toast.makeText(MainActivity.this, 
-                                        String.format("已添加 %d 个视频到列表", addedCount), 
-                                        Toast.LENGTH_SHORT).show();
-                            } else {
-                                Toast.makeText(MainActivity.this, 
-                                        "所有视频已在列表中", 
-                                        Toast.LENGTH_SHORT).show();
-                            }
+                            // 直接替换视频列表
+                            videoList.addAll(newVideos);
+                            Toast.makeText(MainActivity.this, 
+                                    String.format("已加载 %d 个视频", newVideos.size()), 
+                                    Toast.LENGTH_SHORT).show();
                         }
+                        
+                        // 更新UI，但不切换导航
+                        updateVideoLists();
+                        
                     } catch (Exception e) {
                         Log.e(TAG, "更新UI失败", e);
                         Toast.makeText(MainActivity.this, "加载视频列表失败", Toast.LENGTH_SHORT).show();
@@ -794,6 +812,8 @@ public class MainActivity extends AppCompatActivity
                     .getString("default_video_folder_uri", null);
             if (defaultVideoFolderUri != null) {
                 Uri videoFolderUri = Uri.parse(defaultVideoFolderUri);
+                // 保存最后选择的文件夹
+                lastSelectedFolderUri = videoFolderUri;
                 // 确保有权限访问该文件夹
                 int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
                 try {
@@ -806,6 +826,7 @@ public class MainActivity extends AppCompatActivity
                             .edit()
                             .remove("default_video_folder_uri")
                             .apply();
+                    lastSelectedFolderUri = null; // 清除最后选择的文件夹
                 }
             }
 
@@ -993,6 +1014,40 @@ public class MainActivity extends AppCompatActivity
                 if (m2 == null || m2.getDisplayName() == null) return -1;
                 return m1.getDisplayName().toLowerCase().compareTo(m2.getDisplayName().toLowerCase());
             });
+        }
+    }
+
+    public void updateBottomNavigation() {
+        try {
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            boolean showVideo = prefs.getBoolean("show_video_tab", true);
+            boolean showMusic = prefs.getBoolean("show_music_tab", true);
+            boolean showPlaylist = prefs.getBoolean("show_playlist_tab", true);
+
+            // 获取底部导航菜单
+            Menu menu = bottomNavigationView.getMenu();
+            
+            // 设置菜单项的可见性
+            menu.findItem(R.id.nav_video).setVisible(showVideo);
+            menu.findItem(R.id.nav_music).setVisible(showMusic);
+            menu.findItem(R.id.nav_playlist).setVisible(showPlaylist);
+
+            // 更新ViewPager适配器
+            viewPagerAdapter.updateTabs(showVideo, showMusic, showPlaylist);
+
+            // 如果当前选中的页面被隐藏，切换到第一个可见的页面
+            int currentItem = viewPager.getCurrentItem();
+            if (!viewPagerAdapter.isTabEnabled(currentItem)) {
+                for (int i = 0; i < viewPagerAdapter.getItemCount(); i++) {
+                    if (viewPagerAdapter.isTabEnabled(i)) {
+                        viewPager.setCurrentItem(i, false);
+                        bottomNavigationView.setSelectedItemId(getMenuItemIdForPosition(i));
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "更新底部导航栏失败", e);
         }
     }
 }

@@ -22,18 +22,47 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:title="功能设置"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:key="show_video_tab"
+            android:title="显示视频功能"
+            android:summary="在主界面显示视频播放功能"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:key="show_music_tab"
+            android:title="显示音乐功能"
+            android:summary="在主界面显示音乐播放功能"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:key="show_playlist_tab"
+            android:title="显示播放列表功能"
+            android:summary="在主界面显示播放列表功能"
+            android:defaultValue="true"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="存储设置"
         app:iconSpaceReserved="false">
 
         <Preference
             android:key="default_video_folder"
             android:title="默认视频文件夹"
-            android:summary="选择视频文件的默认打开文件夹" />
+            android:summary="选择视频文件的默认打开文件夹"
+            app:iconSpaceReserved="false" />
 
         <Preference
             android:key="default_music_folder"
             android:title="默认音乐文件夹"
-            android:summary="选择音乐文件的默认打开文件夹" />
+            android:summary="选择音乐文件的默认打开文件夹"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
     <PreferenceCategory
@@ -62,9 +91,10 @@
         app:iconSpaceReserved="false">
 
         <Preference
-            android:key="about_app"
+            android:key="about"
             android:title="关于应用"
-            android:summary="查看应用信息和版本" />
+            android:summary="查看应用信息"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
 </PreferenceScreen> 

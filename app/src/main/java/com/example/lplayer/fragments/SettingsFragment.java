@@ -183,6 +183,14 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         switch (key) {
+            case "show_video_tab":
+            case "show_music_tab":
+            case "show_playlist_tab":
+                // 通知MainActivity更新底部导航栏
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).updateBottomNavigation();
+                }
+                break;
             case "default_playback_speed":
                 String speed = sharedPreferences.getString(key, "1.0");
                 updatePlaybackSpeedSummary(speed);
@@ -194,6 +202,12 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             case "thumbnail_quality":
                 String thumbnailQuality = sharedPreferences.getString(key, "medium");
                 // TODO: 实现缩略图质量更新逻辑
+                break;
+            case "default_video_folder_uri":
+                // ... existing code ...
+                break;
+            case "default_music_folder_uri":
+                // ... existing code ...
                 break;
         }
     }
