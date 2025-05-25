@@ -3,6 +3,7 @@ package com.example.lplayer;
 import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.UriPermission;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -227,6 +228,44 @@ public class MainActivity extends AppCompatActivity
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
                 bottomNavigationView.setSelectedItemId(getMenuItemIdForPosition(position));
+                
+                // 当切换到音乐界面时，自动加载默认文件夹
+                if (position == ViewPagerAdapter.TAB_MUSIC) {
+                    String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(MainActivity.this)
+                            .getString("default_music_folder_uri", null);
+                    if (defaultMusicFolderUri != null) {
+                        Uri musicFolderUri = Uri.parse(defaultMusicFolderUri);
+                        // 验证权限
+                        List<UriPermission> permissions = getContentResolver().getPersistedUriPermissions();
+                        boolean hasPermission = false;
+                        for (UriPermission permission : permissions) {
+                            if (permission.getUri().equals(musicFolderUri) && 
+                                permission.isReadPermission()) {
+                                hasPermission = true;
+                                break;
+                            }
+                        }
+                        
+                        if (hasPermission) {
+                            loadMusicFromFolder(musicFolderUri);
+                        } else {
+                            // 如果没有权限，尝试重新获取
+                            try {
+                                int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                                getContentResolver().takePersistableUriPermission(musicFolderUri, takeFlags);
+                                loadMusicFromFolder(musicFolderUri);
+                            } catch (SecurityException e) {
+                                Log.e(TAG, "无法重新获取音乐文件夹权限", e);
+                                // 清除无效的文件夹设置
+                                PreferenceManager.getDefaultSharedPreferences(MainActivity.this)
+                                        .edit()
+                                        .remove("default_music_folder_uri")
+                                        .apply();
+                                Toast.makeText(MainActivity.this, "无法访问音乐文件夹，请重新选择", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                }
             }
         });
     }
@@ -751,7 +790,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onSupportNavigateUp() {
         if (isSettingsVisible) {
-            toggleSettings();
+            closeSettings();
             return true;
         }
         return super.onSupportNavigateUp();
@@ -827,7 +866,14 @@ public class MainActivity extends AppCompatActivity
                             .remove("default_video_folder_uri")
                             .apply();
                     lastSelectedFolderUri = null; // 清除最后选择的文件夹
+                    // 清空视频列表
+                    videoList.clear();
+                    updateVideoLists();
                 }
+            } else {
+                // 如果没有默认文件夹，清空视频列表
+                videoList.clear();
+                updateVideoLists();
             }
 
             // 加载默认音乐文件夹
@@ -847,16 +893,43 @@ public class MainActivity extends AppCompatActivity
                             .edit()
                             .remove("default_music_folder_uri")
                             .apply();
+                    // 清空音乐列表
+                    Fragment musicFragment = getSupportFragmentManager()
+                            .findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+                    if (musicFragment instanceof MusicFragment) {
+                        ((MusicFragment) musicFragment).updateMusicList(new ArrayList<>());
+                    }
+                }
+            } else {
+                // 如果没有默认文件夹，清空音乐列表
+                Fragment musicFragment = getSupportFragmentManager()
+                        .findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+                if (musicFragment instanceof MusicFragment) {
+                    ((MusicFragment) musicFragment).updateMusicList(new ArrayList<>());
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "加载默认文件夹失败", e);
+            // 发生异常时清空所有列表
+            videoList.clear();
+            updateVideoLists();
+            Fragment musicFragment = getSupportFragmentManager()
+                    .findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+            if (musicFragment instanceof MusicFragment) {
+                ((MusicFragment) musicFragment).updateMusicList(new ArrayList<>());
+            }
         }
     }
 
-    private void loadMusicFromFolder(Uri folderUri) {
+    public void loadMusicFromFolder(Uri folderUri) {
         try {
             Log.d(TAG, "开始扫描音乐文件夹: " + folderUri);
+            
+            // 先清空当前音乐列表
+            Fragment musicFragment = getSupportFragmentManager().findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+            if (musicFragment instanceof MusicFragment) {
+                ((MusicFragment) musicFragment).updateMusicList(new ArrayList<>());
+            }
             
             // 创建独立线程处理文件扫描，避免阻塞UI线程
             new Thread(() -> {
@@ -895,9 +968,17 @@ public class MainActivity extends AppCompatActivity
                         }
                     } else {
                         Log.e(TAG, "文件夹不存在或无法访问");
+                        runOnUiThread(() -> {
+                            Toast.makeText(MainActivity.this, "无法访问音乐文件夹", Toast.LENGTH_SHORT).show();
+                        });
+                        return;
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "扫描文件夹失败", e);
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this, "扫描音乐文件夹失败", Toast.LENGTH_SHORT).show();
+                    });
+                    return;
                 }
                 
                 // 对音乐列表进行排序（按名称字母顺序）
@@ -908,14 +989,12 @@ public class MainActivity extends AppCompatActivity
                 // 在UI线程更新界面
                 runOnUiThread(() -> {
                     try {
-                        if (newMusic.isEmpty()) {
-                            Toast.makeText(MainActivity.this, R.string.no_music_found, Toast.LENGTH_SHORT).show();
-                        } else {
-                            // 获取当前的MusicFragment
-                            Fragment musicFragment = getSupportFragmentManager().findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
-                            if (musicFragment instanceof MusicFragment) {
+                        if (musicFragment instanceof MusicFragment) {
+                            if (newMusic.isEmpty()) {
+                                ((MusicFragment) musicFragment).updateMusicList(new ArrayList<>());
+                                Toast.makeText(MainActivity.this, R.string.no_music_found, Toast.LENGTH_SHORT).show();
+                            } else {
                                 ((MusicFragment) musicFragment).updateMusicList(newMusic);
-                                bottomNavigationView.setSelectedItemId(R.id.nav_music);
                                 Toast.makeText(MainActivity.this, 
                                         String.format("已加载 %d 个音乐文件", newMusic.size()), 
                                         Toast.LENGTH_SHORT).show();
@@ -941,6 +1020,11 @@ public class MainActivity extends AppCompatActivity
             if (swipeRefreshLayout.isRefreshing()) {
                 swipeRefreshLayout.setRefreshing(false);
                 isRefreshing = false;
+            }
+            // 清空音乐列表
+            Fragment musicFragment = getSupportFragmentManager().findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+            if (musicFragment instanceof MusicFragment) {
+                ((MusicFragment) musicFragment).updateMusicList(new ArrayList<>());
             }
         }
     }
@@ -1048,6 +1132,59 @@ public class MainActivity extends AppCompatActivity
             }
         } catch (Exception e) {
             Log.e(TAG, "更新底部导航栏失败", e);
+        }
+    }
+
+    public void reloadMusicList() {
+        try {
+            String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
+                    .getString("default_music_folder_uri", null);
+            if (defaultMusicFolderUri != null) {
+                Uri musicFolderUri = Uri.parse(defaultMusicFolderUri);
+                // 验证权限
+                List<UriPermission> permissions = getContentResolver().getPersistedUriPermissions();
+                boolean hasPermission = false;
+                for (UriPermission permission : permissions) {
+                    if (permission.getUri().equals(musicFolderUri) && 
+                        permission.isReadPermission()) {
+                        hasPermission = true;
+                        break;
+                    }
+                }
+                
+                if (hasPermission) {
+                    loadMusicFromFolder(musicFolderUri);
+                } else {
+                    // 如果没有权限，尝试重新获取
+                    try {
+                        int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                        getContentResolver().takePersistableUriPermission(musicFolderUri, takeFlags);
+                        loadMusicFromFolder(musicFolderUri);
+                    } catch (SecurityException e) {
+                        Log.e(TAG, "无法重新获取音乐文件夹权限", e);
+                        // 清除无效的文件夹设置
+                        PreferenceManager.getDefaultSharedPreferences(this)
+                                .edit()
+                                .remove("default_music_folder_uri")
+                                .apply();
+                        Toast.makeText(this, "无法访问音乐文件夹，请重新选择", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "重新加载音乐列表失败", e);
+            Toast.makeText(this, "重新加载音乐列表失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isSettingsVisible) {
+            // 如果设置界面可见，则关闭设置界面
+            closeSettings();
+        } else {
+            // 否则执行默认的返回操作
+            super.onBackPressed();
         }
     }
 }

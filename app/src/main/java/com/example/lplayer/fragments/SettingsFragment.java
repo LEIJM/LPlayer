@@ -2,8 +2,10 @@ package com.example.lplayer.fragments;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.UriPermission;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -20,8 +22,11 @@ import androidx.preference.PreferenceManager;
 import com.example.lplayer.MainActivity;
 import com.example.lplayer.R;
 
+import java.util.List;
+
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
 
+    private static final String TAG = "SettingsFragment";
     private ListPreference playbackSpeedPreference;
     private Toolbar toolbar;
     private ActivityResultLauncher<Intent> videoFolderPickerLauncher;
@@ -38,15 +43,39 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 if (result.getResultCode() == MainActivity.RESULT_OK && result.getData() != null) {
                     Uri folderUri = result.getData().getData();
                     if (folderUri != null) {
-                        // 保存视频文件夹URI
-                        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(requireContext()).edit();
-                        editor.putString("default_video_folder_uri", folderUri.toString());
-                        editor.apply();
-                        
-                        // 更新设置项摘要
-                        Preference videoFolderPref = findPreference("default_video_folder");
-                        if (videoFolderPref != null) {
-                            videoFolderPref.setSummary("已选择: " + getFolderNameFromUri(folderUri));
+                        try {
+                            // 获取持久化权限
+                            int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                            requireContext().getContentResolver().takePersistableUriPermission(folderUri, takeFlags);
+                            
+                            // 验证权限是否成功获取
+                            List<UriPermission> permissions = requireContext().getContentResolver().getPersistedUriPermissions();
+                            boolean hasPermission = false;
+                            for (UriPermission permission : permissions) {
+                                if (permission.getUri().equals(folderUri) && 
+                                    permission.isReadPermission()) {
+                                    hasPermission = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (hasPermission) {
+                                // 保存视频文件夹URI
+                                SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(requireContext()).edit();
+                                editor.putString("default_video_folder_uri", folderUri.toString());
+                                editor.apply();
+                                
+                                // 更新设置项摘要
+                                Preference videoFolderPref = findPreference("default_video_folder");
+                                if (videoFolderPref != null) {
+                                    videoFolderPref.setSummary("已选择: " + getFolderNameFromUri(folderUri));
+                                }
+                            } else {
+                                Toast.makeText(requireContext(), "无法获取文件夹访问权限，请重试", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (SecurityException e) {
+                            Log.e(TAG, "获取文件夹权限失败", e);
+                            Toast.makeText(requireContext(), "无法获取文件夹访问权限: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     }
                 }
@@ -58,15 +87,44 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 if (result.getResultCode() == MainActivity.RESULT_OK && result.getData() != null) {
                     Uri folderUri = result.getData().getData();
                     if (folderUri != null) {
-                        // 保存音乐文件夹URI
-                        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(requireContext()).edit();
-                        editor.putString("default_music_folder_uri", folderUri.toString());
-                        editor.apply();
-                        
-                        // 更新设置项摘要
-                        Preference musicFolderPref = findPreference("default_music_folder");
-                        if (musicFolderPref != null) {
-                            musicFolderPref.setSummary("已选择: " + getFolderNameFromUri(folderUri));
+                        try {
+                            // 获取持久化权限
+                            int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                            requireContext().getContentResolver().takePersistableUriPermission(folderUri, takeFlags);
+                            
+                            // 验证权限是否成功获取
+                            List<UriPermission> permissions = requireContext().getContentResolver().getPersistedUriPermissions();
+                            boolean hasPermission = false;
+                            for (UriPermission permission : permissions) {
+                                if (permission.getUri().equals(folderUri) && 
+                                    permission.isReadPermission()) {
+                                    hasPermission = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (hasPermission) {
+                                // 保存音乐文件夹URI
+                                SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(requireContext()).edit();
+                                editor.putString("default_music_folder_uri", folderUri.toString());
+                                editor.apply();
+                                
+                                // 更新设置项摘要
+                                Preference musicFolderPref = findPreference("default_music_folder");
+                                if (musicFolderPref != null) {
+                                    musicFolderPref.setSummary("已选择: " + getFolderNameFromUri(folderUri));
+                                }
+                                
+                                // 通知 MainActivity 重新加载音乐列表
+                                if (getActivity() instanceof MainActivity) {
+                                    ((MainActivity) getActivity()).reloadMusicList();
+                                }
+                            } else {
+                                Toast.makeText(requireContext(), "无法获取文件夹访问权限，请重试", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (SecurityException e) {
+                            Log.e(TAG, "获取文件夹权限失败", e);
+                            Toast.makeText(requireContext(), "无法获取文件夹访问权限: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     }
                 }

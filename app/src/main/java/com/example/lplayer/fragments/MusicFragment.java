@@ -21,12 +21,14 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.lplayer.MusicAdapter;
 import com.example.lplayer.MusicPlayerActivity;
 import com.example.lplayer.R;
+import com.example.lplayer.MainActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 public class MusicFragment extends Fragment {
 
     private static final String TAG = "MusicFragment";
-    private static final int PERMISSION_REQUEST_CODE = 101;
+    private static final int PERMISSION_REQUEST_CODE = 100;
     
     private RecyclerView recyclerView;
     private TextView emptyView;
@@ -60,10 +62,10 @@ public class MusicFragment extends Fragment {
         this.listener = listener;
     }
 
+    @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                            @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_music, container, false);
     }
 
@@ -96,6 +98,21 @@ public class MusicFragment extends Fragment {
     
     private void checkPermissionAndLoadMusic() {
         try {
+            // 先检查是否有默认文件夹设置
+            String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    .getString("default_music_folder_uri", null);
+            
+            if (defaultMusicFolderUri != null) {
+                // 如果有默认文件夹，主动通知 MainActivity 加载
+                Log.d(TAG, "检测到默认音乐文件夹设置，通知 MainActivity 加载");
+                showEmptyView("正在加载默认音乐文件夹...");
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).loadMusicFromFolder(Uri.parse(defaultMusicFolderUri));
+                }
+                return;
+            }
+            
+            // 如果没有默认文件夹，才加载所有音乐
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 // Android 13及以上使用READ_MEDIA_AUDIO权限
                 if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_AUDIO)
@@ -214,6 +231,7 @@ public class MusicFragment extends Fragment {
         if (musicList.isEmpty()) {
             recyclerView.setVisibility(View.GONE);
             emptyView.setVisibility(View.VISIBLE);
+            emptyView.setText(R.string.no_music_found);
         } else {
             recyclerView.setVisibility(View.VISIBLE);
             emptyView.setVisibility(View.GONE);
@@ -267,21 +285,37 @@ public class MusicFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // 每次恢复时刷新音乐列表
-        if (ContextCompat.checkSelfPermission(requireContext(), 
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? 
-                        Manifest.permission.READ_MEDIA_AUDIO : 
-                        Manifest.permission.READ_EXTERNAL_STORAGE) 
-                == PackageManager.PERMISSION_GRANTED) {
-            loadMusicFromStorage();
+        // 检查是否有默认文件夹设置
+        String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .getString("default_music_folder_uri", null);
+        
+        // 只有在没有默认文件夹设置的情况下，才加载所有音乐
+        if (defaultMusicFolderUri == null) {
+            if (ContextCompat.checkSelfPermission(requireContext(), 
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? 
+                            Manifest.permission.READ_MEDIA_AUDIO : 
+                            Manifest.permission.READ_EXTERNAL_STORAGE) 
+                    == PackageManager.PERMISSION_GRANTED) {
+                loadMusicFromStorage();
+            }
         }
     }
 
     public void updateMusicList(List<MusicAdapter.MusicItem> newMusicList) {
+        if (getContext() == null) return;
+        
+        musicList.clear();
         if (newMusicList != null) {
-            musicList.clear();
             musicList.addAll(newMusicList);
-            updateUI();
         }
+        updateUI();
+    }
+
+    private void showEmptyView(String message) {
+        if (getContext() == null) return;
+        
+        recyclerView.setVisibility(View.GONE);
+        emptyView.setVisibility(View.VISIBLE);
+        emptyView.setText(message);
     }
 }
