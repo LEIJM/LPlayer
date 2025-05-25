@@ -11,6 +11,8 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.FrameLayout;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -25,6 +27,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.lplayer.fragments.MusicFragment;
 import com.example.lplayer.fragments.PlaylistFragment;
+import com.example.lplayer.fragments.SettingsFragment;
 import com.example.lplayer.fragments.VideoFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -50,6 +53,8 @@ public class MainActivity extends AppCompatActivity
     private BottomNavigationView bottomNavigationView;
     private ViewPagerAdapter viewPagerAdapter;
     private Toolbar toolbar;
+    private FrameLayout settingsContainer;
+    private boolean isSettingsVisible = false;
     
     private List<VideoAdapter.VideoItem> videoList = new ArrayList<>();
     private int currentPlayingPosition = -1;
@@ -139,6 +144,7 @@ public class MainActivity extends AppCompatActivity
             viewPager = findViewById(R.id.viewPager);
             bottomNavigationView = findViewById(R.id.bottom_navigation);
             toolbar = findViewById(R.id.toolbar);
+            settingsContainer = findViewById(R.id.settings_container);
             
             // 设置Toolbar为ActionBar
             setSupportActionBar(toolbar);
@@ -172,7 +178,7 @@ public class MainActivity extends AppCompatActivity
             checkPermissionAndPickFolder();
             return true;
         } else if (id == R.id.menu_settings) {
-            Toast.makeText(this, "设置功能正在开发中...", Toast.LENGTH_SHORT).show();
+            toggleSettings();
             return true;
         }
         
@@ -601,5 +607,48 @@ public class MainActivity extends AppCompatActivity
     protected void onResume() {
         super.onResume();
         updateVideoLists();
+    }
+
+    private void toggleSettings() {
+        if (!isSettingsVisible) {
+            // 显示设置界面
+            settingsContainer.setVisibility(View.VISIBLE);
+            viewPager.setVisibility(View.GONE);
+            bottomNavigationView.setVisibility(View.GONE);
+            
+            // 添加设置Fragment
+            if (settingsContainer.getChildCount() == 0) {
+                getSupportFragmentManager()
+                    .beginTransaction()
+                    .add(R.id.settings_container, new SettingsFragment())
+                    .commit();
+            }
+            
+            // 更新Toolbar
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("设置");
+            
+            isSettingsVisible = true;
+        } else {
+            // 隐藏设置界面
+            settingsContainer.setVisibility(View.GONE);
+            viewPager.setVisibility(View.VISIBLE);
+            bottomNavigationView.setVisibility(View.VISIBLE);
+            
+            // 更新Toolbar
+            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+            getSupportActionBar().setTitle(R.string.app_name);
+            
+            isSettingsVisible = false;
+        }
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        if (isSettingsVisible) {
+            toggleSettings();
+            return true;
+        }
+        return super.onSupportNavigateUp();
     }
 }

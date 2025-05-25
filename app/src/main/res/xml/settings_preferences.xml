@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="播放器设置"
+        app:iconSpaceReserved="false">
+
+        <ListPreference
+            android:key="default_quality"
+            android:title="默认播放质量"
+            android:summary="选择视频默认播放质量"
+            android:entries="@array/video_quality_entries"
+            android:entryValues="@array/video_quality_values"
+            android:defaultValue="auto" />
+
+        <SwitchPreferenceCompat
+            android:key="auto_play_next"
+            android:title="自动播放下一集"
+            android:summary="播放完成后自动播放下一集"
+            android:defaultValue="true" />
+
+        <ListPreference
+            android:key="player_theme"
+            android:title="播放器主题"
+            android:summary="选择播放器界面主题"
+            android:entries="@array/theme_entries"
+            android:entryValues="@array/theme_values"
+            android:defaultValue="system" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="存储设置"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="cache_location"
+            android:title="缓存位置"
+            android:summary="选择视频缓存存储位置" />
+
+        <SeekBarPreference
+            android:key="cache_size"
+            android:title="缓存大小限制"
+            android:summary="设置最大缓存大小（GB）"
+            android:max="10"
+            android:defaultValue="2" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="界面设置"
+        app:iconSpaceReserved="false">
+
+        <ListPreference
+            android:key="list_display_mode"
+            android:title="列表显示方式"
+            android:summary="选择视频列表的显示方式"
+            android:entries="@array/display_mode_entries"
+            android:entryValues="@array/display_mode_values"
+            android:defaultValue="grid" />
+
+        <ListPreference
+            android:key="thumbnail_quality"
+            android:title="缩略图质量"
+            android:summary="选择视频缩略图的显示质量"
+            android:entries="@array/thumbnail_quality_entries"
+            android:entryValues="@array/thumbnail_quality_values"
+            android:defaultValue="medium" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="关于"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="about_app"
+            android:title="关于应用"
+            android:summary="查看应用信息和版本" />
+
+        <Preference
+            android:key="privacy_policy"
+            android:title="隐私政策"
+            android:summary="查看隐私政策" />
+    </PreferenceCategory>
+
+</PreferenceScreen> 

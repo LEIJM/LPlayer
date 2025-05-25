@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 视频质量选项 -->
+    <string-array name="video_quality_entries">
+        <item>自动</item>
+        <item>1080P</item>
+        <item>720P</item>
+        <item>480P</item>
+        <item>360P</item>
+    </string-array>
+
+    <string-array name="video_quality_values">
+        <item>auto</item>
+        <item>1080</item>
+        <item>720</item>
+        <item>480</item>
+        <item>360</item>
+    </string-array>
+
+    <!-- 主题选项 -->
+    <string-array name="theme_entries">
+        <item>跟随系统</item>
+        <item>浅色</item>
+        <item>深色</item>
+    </string-array>
+
+    <string-array name="theme_values">
+        <item>system</item>
+        <item>light</item>
+        <item>dark</item>
+    </string-array>
+
+    <!-- 显示模式选项 -->
+    <string-array name="display_mode_entries">
+        <item>网格</item>
+        <item>列表</item>
+    </string-array>
+
+    <string-array name="display_mode_values">
+        <item>grid</item>
+        <item>list</item>
+    </string-array>
+
+    <!-- 缩略图质量选项 -->
+    <string-array name="thumbnail_quality_entries">
+        <item>高质量</item>
+        <item>中等</item>
+        <item>低质量</item>
+    </string-array>
+
+    <string-array name="thumbnail_quality_values">
+        <item>high</item>
+        <item>medium</item>
+        <item>low</item>
+    </string-array>
+</resources> 
