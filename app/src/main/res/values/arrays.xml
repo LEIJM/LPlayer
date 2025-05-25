@@ -17,19 +17,6 @@
         <item>360</item>
     </string-array>
 
-    <!-- 主题选项 -->
-    <string-array name="theme_entries">
-        <item>跟随系统</item>
-        <item>浅色</item>
-        <item>深色</item>
-    </string-array>
-
-    <string-array name="theme_values">
-        <item>system</item>
-        <item>light</item>
-        <item>dark</item>
-    </string-array>
-
     <!-- 显示模式选项 -->
     <string-array name="display_mode_entries">
         <item>网格</item>

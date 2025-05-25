@@ -11,7 +11,6 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
 import com.example.lplayer.R;
-import com.example.lplayer.utils.ThemeUtils;
 
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -69,10 +68,6 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         switch (key) {
-            case "player_theme":
-                String theme = sharedPreferences.getString(key, "system");
-                ThemeUtils.applyTheme(theme);
-                break;
             case "cache_size":
                 int cacheSize = sharedPreferences.getInt(key, 2);
                 // TODO: 实现缓存大小更新逻辑

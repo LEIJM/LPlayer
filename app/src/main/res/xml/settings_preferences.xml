@@ -19,14 +19,6 @@
             android:title="自动播放下一集"
             android:summary="播放完成后自动播放下一集"
             android:defaultValue="true" />
-
-        <ListPreference
-            android:key="player_theme"
-            android:title="播放器主题"
-            android:summary="选择播放器界面主题"
-            android:entries="@array/theme_entries"
-            android:entryValues="@array/theme_values"
-            android:defaultValue="system" />
     </PreferenceCategory>
 
     <PreferenceCategory
