@@ -1,20 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 视频质量选项 -->
-    <string-array name="video_quality_entries">
-        <item>自动</item>
-        <item>1080P</item>
-        <item>720P</item>
-        <item>480P</item>
-        <item>360P</item>
+    <!-- 播放速度选项 -->
+    <string-array name="playback_speed_entries">
+        <item>0.5x</item>
+        <item>0.75x</item>
+        <item>1.0x</item>
+        <item>1.25x</item>
+        <item>1.5x</item>
+        <item>2.0x</item>
     </string-array>
 
-    <string-array name="video_quality_values">
-        <item>auto</item>
-        <item>1080</item>
-        <item>720</item>
-        <item>480</item>
-        <item>360</item>
+    <string-array name="playback_speed_values">
+        <item>0.5</item>
+        <item>0.75</item>
+        <item>1.0</item>
+        <item>1.25</item>
+        <item>1.5</item>
+        <item>2.0</item>
     </string-array>
 
     <!-- 显示模式选项 -->

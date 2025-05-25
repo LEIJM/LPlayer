@@ -99,6 +99,21 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>
 
+    <!-- 悬浮锁定按钮 -->
+    <ImageButton
+        android:id="@+id/btn_lock_float"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_player_lock"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="锁定"
+        android:elevation="8dp"
+        app:tint="@color/colorControlNormal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginStart="16dp"/>
+
     <!-- 底部控制区域 - 作为浮动层 -->
     <androidx.cardview.widget.CardView
         android:id="@+id/bottom_controls_card"
@@ -157,19 +172,29 @@
                 tools:text="00:47" />
 
             <!-- 播放控制按钮 - 居中均匀分布 -->
-            <ImageButton
-                android:id="@+id/btn_lock"
-                android:layout_width="48dp"
+            <FrameLayout
+                android:id="@+id/speed_button_container"
+                android:layout_width="wrap_content"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_player_lock"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="锁定"
-                app:tint="@color/colorControlNormal"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="12dp"
                 app:layout_constraintTop_toBottomOf="@id/seek_bar"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/btn_previous"
-                app:layout_constraintHorizontal_chainStyle="spread"/>
+                app:layout_constraintHorizontal_chainStyle="spread">
+
+                <TextView
+                    android:id="@+id/speed_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:textColor="@color/colorControlNormal"
+                    android:textSize="14sp"
+                    android:text="1.0x"/>
+            </FrameLayout>
 
             <ImageButton
                 android:id="@+id/btn_previous"
@@ -179,9 +204,9 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="上一个"
                 app:tint="@color/colorControlNormal"
-                app:layout_constraintTop_toTopOf="@id/btn_lock"
-                app:layout_constraintBottom_toBottomOf="@id/btn_lock"
-                app:layout_constraintStart_toEndOf="@id/btn_lock"
+                app:layout_constraintTop_toTopOf="@id/speed_button_container"
+                app:layout_constraintBottom_toBottomOf="@id/speed_button_container"
+                app:layout_constraintStart_toEndOf="@id/speed_button_container"
                 app:layout_constraintEnd_toStartOf="@id/btn_play_pause"/>
 
             <ImageButton
@@ -192,8 +217,8 @@
                 android:background="@drawable/round_button_background"
                 android:contentDescription="播放/暂停"
                 app:tint="@color/colorTextPrimary"
-                app:layout_constraintTop_toTopOf="@id/btn_lock"
-                app:layout_constraintBottom_toBottomOf="@id/btn_lock"
+                app:layout_constraintTop_toTopOf="@id/speed_button_container"
+                app:layout_constraintBottom_toBottomOf="@id/speed_button_container"
                 app:layout_constraintStart_toEndOf="@id/btn_previous"
                 app:layout_constraintEnd_toStartOf="@id/btn_next"/>
 
@@ -205,8 +230,8 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="下一个"
                 app:tint="@color/colorControlNormal"
-                app:layout_constraintTop_toTopOf="@id/btn_lock"
-                app:layout_constraintBottom_toBottomOf="@id/btn_lock"
+                app:layout_constraintTop_toTopOf="@id/speed_button_container"
+                app:layout_constraintBottom_toBottomOf="@id/speed_button_container"
                 app:layout_constraintStart_toEndOf="@id/btn_play_pause"
                 app:layout_constraintEnd_toStartOf="@id/btn_fullscreen"/>
 
@@ -218,8 +243,8 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="全屏"
                 app:tint="@color/colorControlNormal"
-                app:layout_constraintTop_toTopOf="@id/btn_lock"
-                app:layout_constraintBottom_toBottomOf="@id/btn_lock"
+                app:layout_constraintTop_toTopOf="@id/speed_button_container"
+                app:layout_constraintBottom_toBottomOf="@id/speed_button_container"
                 app:layout_constraintStart_toEndOf="@id/btn_next"
                 app:layout_constraintEnd_toEndOf="parent"/>
         </androidx.constraintlayout.widget.ConstraintLayout>

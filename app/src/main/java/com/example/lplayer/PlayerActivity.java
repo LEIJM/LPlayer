@@ -15,6 +15,7 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -36,6 +37,8 @@ import java.util.Locale;
 import android.database.Cursor;
 import android.provider.MediaStore;
 import androidx.preference.PreferenceManager;
+import android.content.SharedPreferences;
+import android.app.AlertDialog;
 
 public class PlayerActivity extends AppCompatActivity {
 
@@ -54,8 +57,11 @@ public class PlayerActivity extends AppCompatActivity {
     private ImageButton fullscreenButton;
     private ImageButton backButton;
     private ImageButton lockButton;
+    private ImageButton lockFloatButton;
+    private FrameLayout speedButtonContainer;
     private ImageButton moreButton;
     private ImageButton playlistButton;
+    private TextView speedText;
     
     private ConstraintLayout topControls;
     private ConstraintLayout bottomControls;
@@ -101,17 +107,29 @@ public class PlayerActivity extends AppCompatActivity {
     private boolean isUserPrevious = false;
     private boolean isUserSelect = false;
     private boolean autoPlayNext = true; // 添加自动播放设置变量
-
-    private ImageButton unlockButton; // 动态解锁按钮
+    private float defaultPlaybackSpeed = 1.0f; // 添加默认播放速度变量
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
         
-        // 读取自动播放设置
-        autoPlayNext = PreferenceManager.getDefaultSharedPreferences(this)
-                .getBoolean("auto_play_next", true);
+        // 读取设置
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        autoPlayNext = prefs.getBoolean("auto_play_next", true);
+        defaultPlaybackSpeed = Float.parseFloat(prefs.getString("default_playback_speed", "1.0"));
+        
+        // 添加设置变化监听
+        prefs.registerOnSharedPreferenceChangeListener((sharedPreferences, key) -> {
+            if ("default_playback_speed".equals(key)) {
+                float newSpeed = Float.parseFloat(sharedPreferences.getString(key, "1.0"));
+                if (player != null) {
+                    player.setPlaybackSpeed(newSpeed);
+                    updateSpeedText(newSpeed);
+                }
+                defaultPlaybackSpeed = newSpeed;
+            }
+        });
         
         // 全屏设置
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, 
@@ -195,7 +213,9 @@ public class PlayerActivity extends AppCompatActivity {
         nextButton = findViewById(R.id.btn_next);
         fullscreenButton = findViewById(R.id.btn_fullscreen);
         backButton = findViewById(R.id.btn_back);
-        lockButton = findViewById(R.id.btn_lock);
+        lockButton = findViewById(R.id.btn_lock_float);
+        speedButtonContainer = findViewById(R.id.speed_button_container);
+        speedText = findViewById(R.id.speed_text);
         moreButton = findViewById(R.id.btn_more);
         playlistButton = findViewById(R.id.btn_playlist);
         topControls = findViewById(R.id.top_controls);
@@ -215,6 +235,9 @@ public class PlayerActivity extends AppCompatActivity {
         
         // 设置进度条最大值为1000
         seekBar.setMax(1000);
+        
+        // 初始化速度显示
+        updateSpeedText(defaultPlaybackSpeed);
     }
     
     // 从URI获取实际文件名
@@ -358,6 +381,10 @@ public class PlayerActivity extends AppCompatActivity {
                     .build();
             playerView.setPlayer(player);
             
+            // 设置默认播放速度
+            player.setPlaybackSpeed(defaultPlaybackSpeed);
+            updateSpeedText(defaultPlaybackSpeed);
+            
             // 设置播放监听器
             player.addListener(new Player.Listener() {
                 @Override
@@ -497,18 +524,15 @@ public class PlayerActivity extends AppCompatActivity {
                 topControls.setVisibility(View.GONE);
                 bottomControls.setVisibility(View.GONE);
                 lockButton.setVisibility(View.VISIBLE);
-                addUnlockButtonToRoot();
             } else {
                 showControls();
                 resetHideControlsTimer();
-                removeUnlockButtonFromRoot();
             }
         });
         
-        // 更多按钮
-        moreButton.setOnClickListener(v -> {
-            // 显示更多选项菜单
-            Toast.makeText(this, "更多功能开发中...", Toast.LENGTH_SHORT).show();
+        // 播放速度按钮
+        speedButtonContainer.setOnClickListener(v -> {
+            showPlaybackSpeedDialog();
             resetHideControlsTimer();
         });
         
@@ -636,7 +660,7 @@ public class PlayerActivity extends AppCompatActivity {
             topControls.setVisibility(View.GONE);
             bottomControls.setVisibility(View.GONE);
             
-            // 锁定按钮也隐藏，但在锁定状态下仍然可见
+            // 锁定按钮在锁定状态下仍然可见
             if (!isLocked) {
                 lockButton.setVisibility(View.GONE);
             }
@@ -688,6 +712,15 @@ public class PlayerActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // 从设置中重新读取默认播放速度
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        float savedSpeed = Float.parseFloat(prefs.getString("default_playback_speed", "1.0"));
+        if (player != null && Math.abs(savedSpeed - player.getPlaybackParameters().speed) > 0.01f) {
+            player.setPlaybackSpeed(savedSpeed);
+            updateSpeedText(savedSpeed);
+            defaultPlaybackSpeed = savedSpeed;
+        }
+        
         if (player != null && !isPlaying) {
             player.play();
             isPlaying = true;
@@ -722,39 +755,54 @@ public class PlayerActivity extends AppCompatActivity {
         super.onBackPressed();
     }
 
-    // 动态添加解锁按钮到根布局
-    private void addUnlockButtonToRoot() {
-        if (unlockButton != null) return;
-        unlockButton = new ImageButton(this);
-        unlockButton.setId(View.generateViewId());
-        unlockButton.setImageResource(R.drawable.ic_player_unlock);
-        unlockButton.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        unlockButton.setContentDescription("解锁");
-        unlockButton.setColorFilter(getResources().getColor(android.R.color.white));
-        // 设置大小和位置（如左下角）
-        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(120, 120);
-        params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
-        params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
-        params.setMargins(32, 32, 32, 32);
-        unlockButton.setLayoutParams(params);
-        // 点击解锁
-        unlockButton.setOnClickListener(v -> {
-            isLocked = false;
-            showControls();
-            resetHideControlsTimer();
-            removeUnlockButtonFromRoot();
-        });
-        // 添加到根布局
-        ConstraintLayout root = findViewById(R.id.player_layout);
-        root.addView(unlockButton);
+    private void updateSpeedText(float speed) {
+        // 使用精确的格式化方式，避免四舍五入
+        String speedText;
+        if (speed == 1.25f) {
+            speedText = "1.25x";
+        } else if (speed == 1.5f) {
+            speedText = "1.5x";
+        } else if (speed == 1.75f) {
+            speedText = "1.75x";
+        } else if (speed == 2.0f) {
+            speedText = "2.0x";
+        } else {
+            // 对于其他速度值，使用精确的格式化
+            speedText = String.format(Locale.US, "%.2fx", speed).replaceAll("0+$", "").replaceAll("\\.$", "");
+        }
+        this.speedText.setText(speedText);
     }
 
-    // 移除解锁按钮
-    private void removeUnlockButtonFromRoot() {
-        if (unlockButton != null) {
-            ConstraintLayout root = findViewById(R.id.player_layout);
-            root.removeView(unlockButton);
-            unlockButton = null;
+    private void showPlaybackSpeedDialog() {
+        String[] speeds = getResources().getStringArray(R.array.playback_speed_entries);
+        float[] speedValues = new float[speeds.length];
+        for (int i = 0; i < speeds.length; i++) {
+            speedValues[i] = Float.parseFloat(getResources().getStringArray(R.array.playback_speed_values)[i]);
         }
+        
+        int currentSpeedIndex = 0;
+        float currentSpeed = player.getPlaybackParameters().speed;
+        for (int i = 0; i < speedValues.length; i++) {
+            if (Math.abs(speedValues[i] - currentSpeed) < 0.01f) {
+                currentSpeedIndex = i;
+                break;
+            }
+        }
+        
+        new AlertDialog.Builder(this)
+                .setTitle("播放速度")
+                .setSingleChoiceItems(speeds, currentSpeedIndex, (dialog, which) -> {
+                    float newSpeed = speedValues[which];
+                    player.setPlaybackSpeed(newSpeed);
+                    updateSpeedText(newSpeed);
+                    // 保存为新的默认值
+                    PreferenceManager.getDefaultSharedPreferences(this)
+                            .edit()
+                            .putString("default_playback_speed", String.valueOf(newSpeed))
+                            .apply();
+                    defaultPlaybackSpeed = newSpeed;  // 更新当前实例的默认速度
+                    dialog.dismiss();
+                })
+                .show();
     }
 }

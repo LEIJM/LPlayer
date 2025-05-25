@@ -7,12 +7,12 @@
         app:iconSpaceReserved="false">
 
         <ListPreference
-            android:key="default_quality"
-            android:title="默认播放质量"
-            android:summary="选择视频默认播放质量"
-            android:entries="@array/video_quality_entries"
-            android:entryValues="@array/video_quality_values"
-            android:defaultValue="auto" />
+            android:key="default_playback_speed"
+            android:title="默认播放速度"
+            android:summary="选择视频默认播放速度"
+            android:entries="@array/playback_speed_entries"
+            android:entryValues="@array/playback_speed_values"
+            android:defaultValue="1.0" />
 
         <SwitchPreferenceCompat
             android:key="auto_play_next"

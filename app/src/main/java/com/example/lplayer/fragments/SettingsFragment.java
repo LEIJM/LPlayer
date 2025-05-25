@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
 
+import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
@@ -14,9 +15,18 @@ import com.example.lplayer.R;
 
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
 
+    private ListPreference playbackSpeedPreference;
+
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.settings_preferences, rootKey);
+        
+        // 获取播放速度设置项
+        playbackSpeedPreference = findPreference("default_playback_speed");
+        if (playbackSpeedPreference != null) {
+            // 初始化显示当前值
+            updatePlaybackSpeedSummary(playbackSpeedPreference.getValue());
+        }
         
         // 设置缓存位置点击事件
         Preference cacheLocation = findPreference("cache_location");
@@ -56,6 +66,11 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         super.onResume();
         PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .registerOnSharedPreferenceChangeListener(this);
+        
+        // 恢复时更新显示
+        if (playbackSpeedPreference != null) {
+            updatePlaybackSpeedSummary(playbackSpeedPreference.getValue());
+        }
     }
 
     @Override
@@ -68,6 +83,10 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         switch (key) {
+            case "default_playback_speed":
+                String speed = sharedPreferences.getString(key, "1.0");
+                updatePlaybackSpeedSummary(speed);
+                break;
             case "cache_size":
                 int cacheSize = sharedPreferences.getInt(key, 2);
                 // TODO: 实现缓存大小更新逻辑
@@ -80,6 +99,26 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 String thumbnailQuality = sharedPreferences.getString(key, "medium");
                 // TODO: 实现缩略图质量更新逻辑
                 break;
+        }
+    }
+
+    private void updatePlaybackSpeedSummary(String speedValue) {
+        if (playbackSpeedPreference != null) {
+            // 获取对应的显示文本
+            String[] entries = getResources().getStringArray(R.array.playback_speed_entries);
+            String[] values = getResources().getStringArray(R.array.playback_speed_values);
+            
+            // 查找当前值对应的显示文本
+            String displayText = "1.0x"; // 默认值
+            for (int i = 0; i < values.length; i++) {
+                if (values[i].equals(speedValue)) {
+                    displayText = entries[i];
+                    break;
+                }
+            }
+            
+            // 更新摘要显示
+            playbackSpeedPreference.setSummary("当前速度: " + displayText);
         }
     }
 } 
