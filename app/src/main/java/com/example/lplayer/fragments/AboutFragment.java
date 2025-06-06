@@ -34,7 +34,7 @@ public class AboutFragment extends Fragment {
             toolbar.setTitle("返回");
             toolbar.setNavigationIcon(R.drawable.ic_back);
             toolbar.setNavigationOnClickListener(v -> {
-                // 返回上一级
+                // 返回上一级，使用popBackStack而不是直接关闭设置
                 requireActivity().getSupportFragmentManager().popBackStack();
             });
         }

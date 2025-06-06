@@ -253,19 +253,15 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 String speed = sharedPreferences.getString(key, "1.0");
                 updatePlaybackSpeedSummary(speed);
                 break;
-            case "list_display_mode":
-                String displayMode = sharedPreferences.getString(key, "grid");
-                // TODO: 实现列表显示模式更新逻辑
-                break;
-            case "thumbnail_quality":
-                String thumbnailQuality = sharedPreferences.getString(key, "medium");
-                // TODO: 实现缩略图质量更新逻辑
-                break;
             case "default_video_folder_uri":
                 // ... existing code ...
                 break;
             case "default_music_folder_uri":
-                // ... existing code ...
+                // 当设置了音乐文件夹时，通知MainActivity重新加载音乐列表
+                String musicFolderUri = sharedPreferences.getString(key, null);
+                if (musicFolderUri != null && getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).reloadMusicList();
+                }
                 break;
         }
     }
@@ -294,14 +290,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     public boolean onPreferenceTreeClick(Preference preference) {
         String key = preference.getKey();
         if (key != null) {
-            switch (key) {
-                case "display_mode":
-                    // 处理显示模式设置
-                    String displayMode = preference.getSharedPreferences()
-                            .getString("display_mode", "grid");
-                    sendDisplayModeBroadcast(displayMode);
-                    break;
-            }
+            // 移除display_mode相关代码
         }
         return super.onPreferenceTreeClick(preference);
     }
@@ -313,12 +302,6 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 .replace(R.id.settings_container, fragment)
                 .addToBackStack(null)
                 .commit();
-    }
-
-    private void sendDisplayModeBroadcast(String displayMode) {
-        Intent intent = new Intent("com.example.lplayer.DISPLAY_MODE_CHANGED");
-        intent.putExtra("display_mode", displayMode);
-        requireContext().sendBroadcast(intent);
     }
 
     @Override

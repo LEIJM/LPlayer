@@ -35,14 +35,7 @@
     <!-- 关于界面 -->
     <string name="about">关于</string>
     <string name="about_features">主要功能</string>
-    <string name="about_features_list">• 支持多种视频格式播放\n• 支持音频文件播放\n• 支持播放列表管理\n• 支持文件夹扫描\n• 支持网格/列表显示\n• 支持深色主题\n• 支持自动播放下一集</string>
+    <string name="about_features_list">• 支持多种视频格式播放\n• 支持音频文件播放\n• 支持播放列表管理\n• 支持文件夹扫描\n• 支持深色主题\n• 支持自动播放下一集</string>
     <string name="about_copyright">© 2025 LPlayer. All rights reserved.</string>
     <string name="version_format">版本 %s</string>
-
-    <!-- 显示设置 -->
-    <string name="display_settings">显示设置</string>
-    <string name="display_mode">显示模式</string>
-    <string name="display_mode_summary">选择视频列表的显示方式</string>
-    <string name="display_mode_grid">网格显示</string>
-    <string name="display_mode_list">列表显示</string>
 </resources>

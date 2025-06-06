@@ -2,16 +2,6 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="@string/display_settings">
-        <ListPreference
-            android:key="display_mode"
-            android:title="@string/display_mode"
-            android:summary="@string/display_mode_summary"
-            android:entries="@array/display_mode_entries"
-            android:entryValues="@array/display_mode_values"
-            android:defaultValue="grid" />
-    </PreferenceCategory>
-
     <PreferenceCategory android:title="@string/about">
         <Preference
             android:key="about"

@@ -66,32 +66,11 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:title="界面设置"
-        app:iconSpaceReserved="false">
-
-        <ListPreference
-            android:key="list_display_mode"
-            android:title="列表显示方式"
-            android:summary="选择视频列表的显示方式"
-            android:entries="@array/display_mode_entries"
-            android:entryValues="@array/display_mode_values"
-            android:defaultValue="grid" />
-
-        <ListPreference
-            android:key="thumbnail_quality"
-            android:title="缩略图质量"
-            android:summary="选择视频缩略图的显示质量"
-            android:entries="@array/thumbnail_quality_entries"
-            android:entryValues="@array/thumbnail_quality_values"
-            android:defaultValue="medium" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
         android:title="关于"
         app:iconSpaceReserved="false">
 
         <Preference
-            android:key="about"
+            android:key="about_app"
             android:title="关于应用"
             android:summary="查看应用信息"
             app:iconSpaceReserved="false" />

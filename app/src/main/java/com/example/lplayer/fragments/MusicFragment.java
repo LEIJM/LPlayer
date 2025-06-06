@@ -38,7 +38,6 @@ import java.util.concurrent.TimeUnit;
 public class MusicFragment extends Fragment {
 
     private static final String TAG = "MusicFragment";
-    private static final int PERMISSION_REQUEST_CODE = 100;
     
     private RecyclerView recyclerView;
     private TextView emptyView;
@@ -92,129 +91,30 @@ public class MusicFragment extends Fragment {
             }
         });
         
-        // 检查权限并加载音乐
-        checkPermissionAndLoadMusic();
+        // 检查并加载音乐
+        checkAndLoadMusic();
     }
     
-    private void checkPermissionAndLoadMusic() {
+    private void checkAndLoadMusic() {
         try {
-            // 先检查是否有默认文件夹设置
+            // 检查是否有默认文件夹设置
             String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(requireContext())
                     .getString("default_music_folder_uri", null);
             
             if (defaultMusicFolderUri != null) {
-                // 如果有默认文件夹，主动通知 MainActivity 加载
+                // 如果有默认文件夹，通知 MainActivity 加载
                 Log.d(TAG, "检测到默认音乐文件夹设置，通知 MainActivity 加载");
-                showEmptyView("正在加载默认音乐文件夹...");
+                showEmptyView("正在加载音乐文件夹...");
                 if (getActivity() instanceof MainActivity) {
                     ((MainActivity) getActivity()).loadMusicFromFolder(Uri.parse(defaultMusicFolderUri));
                 }
-                return;
-            }
-            
-            // 如果没有默认文件夹，才加载所有音乐
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // Android 13及以上使用READ_MEDIA_AUDIO权限
-                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_AUDIO)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(requireActivity(),
-                            new String[]{Manifest.permission.READ_MEDIA_AUDIO},
-                            PERMISSION_REQUEST_CODE);
-                } else {
-                    loadMusicFromStorage();
-                }
             } else {
-                // Android 12及以下使用READ_EXTERNAL_STORAGE权限
-                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(requireActivity(),
-                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                            PERMISSION_REQUEST_CODE);
-                } else {
-                    loadMusicFromStorage();
-                }
+                // 如果没有默认文件夹，显示提示信息
+                showEmptyView("请在设置中选择音乐文件夹");
             }
         } catch (Exception e) {
-            Log.e(TAG, "检查权限时出错: " + e.getMessage(), e);
-            Toast.makeText(getContext(), "无法访问音乐文件", Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                loadMusicFromStorage();
-            } else {
-                Toast.makeText(getContext(), R.string.permission_denied, Toast.LENGTH_SHORT).show();
-            }
-            return;
-        }
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
-    
-    private void loadMusicFromStorage() {
-        try {
-            musicList.clear();
-            
-            // 查询音频文件
-            Uri collection;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL);
-            } else {
-                collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-            }
-            
-            String[] projection = new String[] {
-                    MediaStore.Audio.Media._ID,
-                    MediaStore.Audio.Media.DISPLAY_NAME,
-                    MediaStore.Audio.Media.ARTIST,
-                    MediaStore.Audio.Media.ALBUM,
-                    MediaStore.Audio.Media.DURATION
-            };
-            
-            String selection = MediaStore.Audio.Media.IS_MUSIC + " != 0";
-            
-            try (Cursor cursor = requireContext().getContentResolver().query(
-                    collection,
-                    projection,
-                    selection,
-                    null,
-                    MediaStore.Audio.Media.DATE_ADDED + " DESC")) {
-                
-                if (cursor != null) {
-                    int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID);
-                    int nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME);
-                    int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
-                    int albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM);
-                    int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
-                    
-                    Log.d(TAG, "开始加载音乐文件，共找到 " + cursor.getCount() + " 个文件");
-                    
-                    while (cursor.moveToNext()) {
-                        long id = cursor.getLong(idColumn);
-                        String name = cursor.getString(nameColumn);
-                        String artist = cursor.getString(artistColumn);
-                        String album = cursor.getString(albumColumn);
-                        long duration = cursor.getLong(durationColumn);
-                        
-                        Uri contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
-                        
-                        // 格式化时长
-                        String durationFormatted = formatDuration(duration);
-                        
-                        // 创建音乐项并添加到列表
-                        musicList.add(new MusicAdapter.MusicItem(contentUri, name, artist, album, durationFormatted));
-                    }
-                }
-            }
-            
-            // 更新UI
-            updateUI();
-            
-        } catch (Exception e) {
-            Log.e(TAG, "加载音乐文件时出错: " + e.getMessage(), e);
-            Toast.makeText(getContext(), "加载音乐文件失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "检查音乐文件夹时出错: " + e.getMessage(), e);
+            Toast.makeText(getContext(), "无法访问音乐文件夹", Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -289,15 +189,14 @@ public class MusicFragment extends Fragment {
         String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .getString("default_music_folder_uri", null);
         
-        // 只有在没有默认文件夹设置的情况下，才加载所有音乐
-        if (defaultMusicFolderUri == null) {
-            if (ContextCompat.checkSelfPermission(requireContext(), 
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? 
-                            Manifest.permission.READ_MEDIA_AUDIO : 
-                            Manifest.permission.READ_EXTERNAL_STORAGE) 
-                    == PackageManager.PERMISSION_GRANTED) {
-                loadMusicFromStorage();
+        if (defaultMusicFolderUri != null) {
+            // 如果有默认文件夹，重新加载
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).loadMusicFromFolder(Uri.parse(defaultMusicFolderUri));
             }
+        } else {
+            // 如果没有默认文件夹，显示提示信息
+            showEmptyView("请在设置中选择音乐文件夹");
         }
     }
 
@@ -311,7 +210,7 @@ public class MusicFragment extends Fragment {
         updateUI();
     }
 
-    private void showEmptyView(String message) {
+    public void showEmptyView(String message) {
         if (getContext() == null) return;
         
         recyclerView.setVisibility(View.GONE);

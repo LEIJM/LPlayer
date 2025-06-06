@@ -25,6 +25,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.documentfile.provider.DocumentFile;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.lplayer.fragments.MusicFragment;
@@ -229,8 +230,8 @@ public class MainActivity extends AppCompatActivity
                 super.onPageSelected(position);
                 bottomNavigationView.setSelectedItemId(getMenuItemIdForPosition(position));
                 
-                // 当切换到音乐界面时，自动加载默认文件夹
-                if (position == ViewPagerAdapter.TAB_MUSIC) {
+                // 当切换到音乐界面时
+                if (viewPagerAdapter.getEnabledTabs()[position] == ViewPagerAdapter.TAB_MUSIC) {
                     String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(MainActivity.this)
                             .getString("default_music_folder_uri", null);
                     if (defaultMusicFolderUri != null) {
@@ -255,14 +256,29 @@ public class MainActivity extends AppCompatActivity
                                 getContentResolver().takePersistableUriPermission(musicFolderUri, takeFlags);
                                 loadMusicFromFolder(musicFolderUri);
                             } catch (SecurityException e) {
-                                Log.e(TAG, "无法重新获取音乐文件夹权限", e);
+                                Log.e(TAG, "无法获取音乐文件夹权限", e);
                                 // 清除无效的文件夹设置
                                 PreferenceManager.getDefaultSharedPreferences(MainActivity.this)
                                         .edit()
                                         .remove("default_music_folder_uri")
                                         .apply();
+                                
+                                // 显示提示信息
+                                Fragment musicFragment = getSupportFragmentManager()
+                                        .findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+                                if (musicFragment instanceof MusicFragment) {
+                                    ((MusicFragment) musicFragment).showEmptyView("请在设置中选择音乐文件夹");
+                                }
+                                
                                 Toast.makeText(MainActivity.this, "无法访问音乐文件夹，请重新选择", Toast.LENGTH_SHORT).show();
                             }
+                        }
+                    } else {
+                        // 如果没有设置音乐文件夹，显示提示信息
+                        Fragment musicFragment = getSupportFragmentManager()
+                                .findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+                        if (musicFragment instanceof MusicFragment) {
+                            ((MusicFragment) musicFragment).showEmptyView("请在设置中选择音乐文件夹");
                         }
                     }
                 }
@@ -826,6 +842,9 @@ public class MainActivity extends AppCompatActivity
 
     public void closeSettings() {
         if (isSettingsVisible) {
+            // 清空Fragment返回栈
+            getSupportFragmentManager().popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+            
             // 隐藏设置容器
             settingsContainer.setVisibility(View.GONE);
             
@@ -1130,6 +1149,18 @@ public class MainActivity extends AppCompatActivity
                     }
                 }
             }
+            
+            // 检查音乐标签页是否可见，并且是否设置了音乐文件夹
+            if (showMusic) {
+                String defaultMusicFolderUri = prefs.getString("default_music_folder_uri", null);
+                if (defaultMusicFolderUri == null) {
+                    // 如果没有设置音乐文件夹，更新音乐Fragment显示提示信息
+                    Fragment musicFragment = getSupportFragmentManager().findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+                    if (musicFragment instanceof MusicFragment) {
+                        ((MusicFragment) musicFragment).showEmptyView("请在设置中选择音乐文件夹");
+                    }
+                }
+            }
         } catch (Exception e) {
             Log.e(TAG, "更新底部导航栏失败", e);
         }
@@ -1180,8 +1211,14 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onBackPressed() {
         if (isSettingsVisible) {
-            // 如果设置界面可见，则关闭设置界面
-            closeSettings();
+            // 检查Fragment返回栈是否为空
+            if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                // 如果有返回栈，先弹出栈顶Fragment
+                getSupportFragmentManager().popBackStack();
+            } else {
+                // 如果返回栈为空，则关闭设置界面
+                closeSettings();
+            }
         } else {
             // 否则执行默认的返回操作
             super.onBackPressed();
