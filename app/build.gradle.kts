@@ -44,6 +44,9 @@ dependencies {
     implementation("com.google.android.exoplayer:exoplayer-hls:$exoPlayerVersion")
     implementation("com.google.android.exoplayer:exoplayer-rtsp:$exoPlayerVersion")
     
+    // Gson库，用于JSON序列化
+    implementation("com.google.code.gson:gson:2.9.0")
+    
     implementation("androidx.constraintlayout:constraintlayout:2.1.1")
     implementation("androidx.recyclerview:recyclerview:1.2.1")
     implementation("androidx.documentfile:documentfile:1.0.1")

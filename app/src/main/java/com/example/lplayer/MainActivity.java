@@ -863,9 +863,48 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        
+        try {
+            // 保存视频播放列表
+            PlaylistManager.saveVideoPlaylist(this, videoList);
+            
+            // 保存音乐播放列表
+            Fragment musicFragment = getSupportFragmentManager().findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+            if (musicFragment instanceof MusicFragment) {
+                List<MusicAdapter.MusicItem> musicList = ((MusicFragment) musicFragment).getMusicList();
+                PlaylistManager.saveMusicPlaylist(this, musicList);
+            }
+            
+            Log.d(TAG, "播放列表已保存");
+        } catch (Exception e) {
+            Log.e(TAG, "保存播放列表失败: " + e.getMessage(), e);
+        }
+    }
+
     private void loadDefaultFolders() {
         try {
-            // 加载默认视频文件夹
+            // 检查是否启用了保存播放列表功能
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            boolean saveVideoPlaylist = prefs.getBoolean("save_video_playlist", false);
+            boolean saveMusicPlaylist = prefs.getBoolean("save_music_playlist", false);
+            
+            if (saveVideoPlaylist) {
+                // 如果启用了视频播放列表保存功能，尝试加载保存的播放列表
+                List<VideoAdapter.VideoItem> savedVideoList = PlaylistManager.loadVideoPlaylist(this);
+                if (!savedVideoList.isEmpty()) {
+                    // 如果有保存的播放列表，直接使用它
+                    videoList.clear();
+                    videoList.addAll(savedVideoList);
+                    updateVideoLists();
+                    Log.d(TAG, "已加载保存的视频播放列表，共 " + videoList.size() + " 项");
+                    return;
+                }
+            }
+            
+            // 如果没有保存的播放列表或未启用保存功能，则加载默认视频文件夹
             String defaultVideoFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
                     .getString("default_video_folder_uri", null);
             if (defaultVideoFolderUri != null) {
@@ -895,7 +934,23 @@ public class MainActivity extends AppCompatActivity
                 updateVideoLists();
             }
 
-            // 加载默认音乐文件夹
+            // 处理音乐播放列表
+            if (saveMusicPlaylist) {
+                // 如果启用了音乐播放列表保存功能，尝试加载保存的播放列表
+                List<MusicAdapter.MusicItem> savedMusicList = PlaylistManager.loadMusicPlaylist(this);
+                if (!savedMusicList.isEmpty()) {
+                    // 如果有保存的播放列表，更新音乐Fragment
+                    Fragment musicFragment = getSupportFragmentManager()
+                            .findFragmentByTag("f" + ViewPagerAdapter.TAB_MUSIC);
+                    if (musicFragment instanceof MusicFragment) {
+                        ((MusicFragment) musicFragment).updateMusicList(savedMusicList);
+                    }
+                    Log.d(TAG, "已加载保存的音乐播放列表，共 " + savedMusicList.size() + " 项");
+                    return;
+                }
+            }
+
+            // 如果没有保存的播放列表或未启用保存功能，则加载默认音乐文件夹
             String defaultMusicFolderUri = PreferenceManager.getDefaultSharedPreferences(this)
                     .getString("default_music_folder_uri", null);
             if (defaultMusicFolderUri != null) {

@@ -63,6 +63,20 @@
             android:title="默认音乐文件夹"
             android:summary="选择音乐文件的默认打开文件夹"
             app:iconSpaceReserved="false" />
+            
+        <SwitchPreferenceCompat
+            android:key="save_video_playlist"
+            android:title="保存视频播放列表"
+            android:summary="退出应用后保存视频播放列表，下次启动时恢复"
+            android:defaultValue="false"
+            app:iconSpaceReserved="false" />
+            
+        <SwitchPreferenceCompat
+            android:key="save_music_playlist"
+            android:title="保存音乐播放列表"
+            android:summary="退出应用后保存音乐播放列表，下次启动时恢复"
+            android:defaultValue="false"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
     <PreferenceCategory

@@ -263,6 +263,20 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                     ((MainActivity) getActivity()).reloadMusicList();
                 }
                 break;
+            case "save_video_playlist":
+            case "save_music_playlist":
+                // 如果禁用了保存播放列表功能，清除已保存的播放列表数据
+                boolean saveEnabled = sharedPreferences.getBoolean(key, false);
+                if (!saveEnabled) {
+                    if ("save_video_playlist".equals(key)) {
+                        sharedPreferences.edit().remove("saved_video_playlist").apply();
+                        Log.d(TAG, "已清除保存的视频播放列表");
+                    } else if ("save_music_playlist".equals(key)) {
+                        sharedPreferences.edit().remove("saved_music_playlist").apply();
+                        Log.d(TAG, "已清除保存的音乐播放列表");
+                    }
+                }
+                break;
         }
     }
 
