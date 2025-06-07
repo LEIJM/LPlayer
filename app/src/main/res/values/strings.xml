@@ -20,6 +20,7 @@
     <string name="tab_video">视频</string>
     <string name="tab_music">音乐</string>
     <string name="tab_playlist">播放列表</string>
+    <string name="add">添加</string>
     
     <!-- 音乐播放器相关 -->
     <string name="play_pause">播放/暂停</string>

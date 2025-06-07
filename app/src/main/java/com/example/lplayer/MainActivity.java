@@ -19,6 +19,7 @@ import android.widget.FrameLayout;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
@@ -45,6 +46,8 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import android.media.MediaMetadataRetriever;
 
 public class MainActivity extends AppCompatActivity 
         implements VideoFragment.VideoFragmentListener, 
@@ -153,6 +156,35 @@ public class MainActivity extends AppCompatActivity
                 }
             });
 
+    // 音乐文件夹选择器
+    private final ActivityResultLauncher<Intent> musicFolderPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Uri folderUri = result.getData().getData();
+                    if (folderUri != null) {
+                        try {
+                            int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                            getContentResolver().takePersistableUriPermission(folderUri, takeFlags);
+                            
+                            // 保存为默认音乐文件夹
+                            PreferenceManager.getDefaultSharedPreferences(this)
+                                    .edit()
+                                    .putString("default_music_folder_uri", folderUri.toString())
+                                    .apply();
+                            
+                            // 加载音乐文件
+                            loadMusicFromFolder(folderUri);
+                            
+                            Toast.makeText(this, "已设置默认音乐文件夹", Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Log.e(TAG, "获取音乐文件夹权限失败", e);
+                            Toast.makeText(this, "无法访问选定的音乐文件夹", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -202,11 +234,23 @@ public class MainActivity extends AppCompatActivity
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         
-        if (id == R.id.menu_select_video) {
-            checkPermissionAndPickVideo();
-            return true;
-        } else if (id == R.id.menu_select_folder) {
-            checkPermissionAndPickFolder();
+        if (id == R.id.menu_add) {
+            // 根据当前所在的界面来决定点击加号按钮的行为
+            int currentPosition = viewPager.getCurrentItem();
+            int[] enabledTabs = viewPagerAdapter.getEnabledTabs();
+            if (currentPosition >= 0 && currentPosition < enabledTabs.length) {
+                int tabType = enabledTabs[currentPosition];
+                if (tabType == ViewPagerAdapter.TAB_VIDEO) {
+                    // 在视频界面，选择视频文件夹
+                    checkPermissionAndPickFolder();
+                } else if (tabType == ViewPagerAdapter.TAB_MUSIC) {
+                    // 在音乐界面，选择音乐文件夹
+                    checkPermissionAndPickMusicFolder();
+                } else {
+                    // 默认行为，选择视频文件夹
+                    checkPermissionAndPickFolder();
+                }
+            }
             return true;
         } else if (id == R.id.menu_settings) {
             toggleSettings();
@@ -436,6 +480,34 @@ public class MainActivity extends AppCompatActivity
         }
     }
     
+    private void checkPermissionAndPickMusicFolder() {
+        lastRequestedAction = REQUEST_ACTION_FOLDER;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.READ_MEDIA_AUDIO},
+                            PERMISSION_REQUEST_CODE);
+                } else {
+                    openMusicFolderPicker();
+                }
+            } else {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                            PERMISSION_REQUEST_CODE);
+                } else {
+                    openMusicFolderPicker();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "检查权限和选择音乐文件夹失败", e);
+            Toast.makeText(this, "无法选择音乐文件夹", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
     private void openVideoPicker() {
         try {
             // 检查是否有默认视频文件夹
@@ -470,6 +542,16 @@ public class MainActivity extends AppCompatActivity
         } catch (Exception e) {
             Log.e(TAG, "打开文件夹选择器失败", e);
             Toast.makeText(this, "无法打开文件夹选择器", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void openMusicFolderPicker() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            musicFolderPickerLauncher.launch(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "打开音乐文件夹选择器失败", e);
+            Toast.makeText(this, "无法打开音乐文件夹选择器", Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -557,12 +639,14 @@ public class MainActivity extends AppCompatActivity
             // 创建独立线程处理文件扫描，避免阻塞UI线程
             new Thread(() -> {
                 List<VideoAdapter.VideoItem> newVideos = new ArrayList<>();
+                String folderName = null;
                 
                 try {
                     DocumentFile folder = DocumentFile.fromTreeUri(this, folderUri);
                     
                     if (folder != null && folder.exists()) {
-                        Log.d(TAG, "文件夹存在: " + folder.getName());
+                        folderName = folder.getName();
+                        Log.d(TAG, "文件夹存在: " + folderName);
                         DocumentFile[] files = folder.listFiles();
                         Log.d(TAG, "找到文件数量: " + files.length);
                         
@@ -594,6 +678,7 @@ public class MainActivity extends AppCompatActivity
                 Log.d(TAG, "找到视频文件数量: " + newVideos.size());
                 
                 // 在UI线程更新界面
+                final String finalFolderName = folderName;
                 runOnUiThread(() -> {
                     try {
                         // 清空当前视频列表
@@ -611,6 +696,12 @@ public class MainActivity extends AppCompatActivity
                         
                         // 更新UI，但不切换导航
                         updateVideoLists();
+                        
+                        // 确保标题栏显示应用名称，并禁用返回箭头
+                        if (getSupportActionBar() != null && !isSettingsVisible) {
+                            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+                            getSupportActionBar().setTitle(R.string.app_name);
+                        }
                         
                     } catch (Exception e) {
                         Log.e(TAG, "更新UI失败", e);
@@ -778,6 +869,9 @@ public class MainActivity extends AppCompatActivity
                         } else if (lastRequestedAction == REQUEST_ACTION_FOLDER) {
                             openFolderPicker();
                         }
+                    } else if (permissions[0].equals(Manifest.permission.READ_MEDIA_AUDIO)) {
+                        // 音乐文件夹权限
+                        openMusicFolderPicker();
                     }
                 } else {
                     Toast.makeText(this, R.string.permission_denied, Toast.LENGTH_SHORT).show();
@@ -1074,6 +1168,12 @@ public class MainActivity extends AppCompatActivity
                                         Toast.LENGTH_SHORT).show();
                             }
                         }
+                        
+                        // 确保标题栏显示应用名称，并禁用返回箭头
+                        if (getSupportActionBar() != null && !isSettingsVisible) {
+                            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+                            getSupportActionBar().setTitle(R.string.app_name);
+                        }
                     } catch (Exception e) {
                         Log.e(TAG, "更新UI失败", e);
                         Toast.makeText(MainActivity.this, "加载音乐列表失败", Toast.LENGTH_SHORT).show();
@@ -1124,33 +1224,63 @@ public class MainActivity extends AppCompatActivity
         String duration = "00:00";
 
         try {
-            // 使用MediaStore查询音乐文件的元数据
-            String[] projection = {
-                MediaStore.Audio.Media.DISPLAY_NAME,
-                MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.ALBUM,
-                MediaStore.Audio.Media.DURATION
-            };
-
-            try (Cursor cursor = getContentResolver().query(
-                    uri,
-                    projection,
-                    null,
-                    null,
-                    null)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    int nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME);
-                    int artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST);
-                    int albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM);
-                    int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
-
-                    displayName = cursor.getString(nameColumn);
-                    artist = cursor.getString(artistColumn);
-                    album = cursor.getString(albumColumn);
-                    long durationMs = cursor.getLong(durationColumn);
-                    duration = formatDuration(durationMs);
+            // 首先尝试从DocumentFile获取文件名
+            DocumentFile file = DocumentFile.fromSingleUri(this, uri);
+            if (file != null && file.getName() != null) {
+                displayName = file.getName();
+                // 去除文件扩展名
+                int lastDot = displayName.lastIndexOf(".");
+                if (lastDot > 0) {
+                    displayName = displayName.substring(0, lastDot);
                 }
             }
+            
+            // 使用MediaMetadataRetriever获取音频元数据
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            retriever.setDataSource(this, uri);
+            
+            // 获取艺术家信息
+            String retrievedArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+            if (retrievedArtist != null && !retrievedArtist.isEmpty()) {
+                artist = retrievedArtist;
+            }
+            
+            // 获取专辑信息
+            String retrievedAlbum = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
+            if (retrievedAlbum != null && !retrievedAlbum.isEmpty()) {
+                album = retrievedAlbum;
+            }
+            
+            // 获取持续时间
+            String durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            if (durationStr != null) {
+                long durationMs = Long.parseLong(durationStr);
+                duration = formatDuration(durationMs);
+            }
+            
+            // 释放资源
+            retriever.release();
+            
+            // 如果MediaMetadataRetriever无法获取到时长，尝试使用MediaStore
+            if (duration.equals("00:00")) {
+                try (Cursor cursor = getContentResolver().query(
+                        uri,
+                        new String[]{MediaStore.Audio.Media.DURATION},
+                        null,
+                        null,
+                        null)) {
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
+                        long durationMs = cursor.getLong(durationColumn);
+                        duration = formatDuration(durationMs);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "通过MediaStore获取音乐时长失败", e);
+                }
+            }
+            
+            Log.d(TAG, "获取到音乐元数据: 名称=" + displayName + ", 艺术家=" + artist + ", 专辑=" + album + ", 时长=" + duration);
+            
         } catch (Exception e) {
             Log.e(TAG, "获取音乐元数据失败", e);
         }
