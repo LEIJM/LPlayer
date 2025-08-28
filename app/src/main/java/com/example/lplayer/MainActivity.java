@@ -114,6 +114,16 @@ public class MainActivity extends AppCompatActivity
                             getContentResolver().takePersistableUriPermission(folderUri, takeFlags);
                             // 保存最后选择的文件夹
                             lastSelectedFolderUri = folderUri;
+                            // 检查是否启用了保存视频播放列表功能
+                            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+                            boolean saveVideoPlaylist = prefs.getBoolean("save_video_playlist", false);
+                            if (saveVideoPlaylist) {
+                                PreferenceManager.getDefaultSharedPreferences(this)
+                                        .edit()
+                                        .putString("default_video_folder_uri", folderUri.toString())
+                                        .apply();
+                                Toast.makeText(this, "已将当前文件夹设为默认视频文件夹", Toast.LENGTH_SHORT).show();
+                            }
                             loadVideosFromFolder(folderUri);
                         } catch (Exception e) {
                             Log.e(TAG, "获取文件夹权限失败", e);
@@ -167,16 +177,22 @@ public class MainActivity extends AppCompatActivity
                             int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
                             getContentResolver().takePersistableUriPermission(folderUri, takeFlags);
                             
-                            // 保存为默认音乐文件夹
-                            PreferenceManager.getDefaultSharedPreferences(this)
-                                    .edit()
-                                    .putString("default_music_folder_uri", folderUri.toString())
-                                    .apply();
+                            // 检查是否启用了保存音乐播放列表功能
+                            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+                            boolean saveMusicPlaylist = prefs.getBoolean("save_music_playlist", false);
+                            if (saveMusicPlaylist) {
+                                PreferenceManager.getDefaultSharedPreferences(this)
+                                        .edit()
+                                        .putString("default_music_folder_uri", folderUri.toString())
+                                        .apply();
+                                Toast.makeText(this, "已将当前文件夹设为默认音乐文件夹", Toast.LENGTH_SHORT).show();
+                            } else {
+                                // 如果没有勾选保存播放列表，则不设置默认文件夹，但仍然加载该文件夹的音乐
+                                Toast.makeText(this, "音乐文件夹已加载，但未设为默认", Toast.LENGTH_SHORT).show();
+                            }
                             
                             // 加载音乐文件
                             loadMusicFromFolder(folderUri);
-                            
-                            Toast.makeText(this, "已设置默认音乐文件夹", Toast.LENGTH_SHORT).show();
                         } catch (Exception e) {
                             Log.e(TAG, "获取音乐文件夹权限失败", e);
                             Toast.makeText(this, "无法访问选定的音乐文件夹", Toast.LENGTH_SHORT).show();
